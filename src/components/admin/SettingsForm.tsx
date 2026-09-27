@@ -41,6 +41,14 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { HourSelect } from "@/components/ui/hour-select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export type SettingsFormProps = {
   settings: AppSettings & {
@@ -216,32 +224,37 @@ export function SettingsForm({ settings }: SettingsFormProps) {
                 onChange={(e) =>
                   setGeneral({ ...general, site_title: e.target.value })
                 }
+                placeholder="مثال: حجز غرف مبنى الخدمات"
               />
             </div>
             <div className="space-y-2">
               <Label>ساعة البداية</Label>
-              <Input
-                type="number"
+              <HourSelect
                 value={general.open_hour}
-                onChange={(e) =>
-                  setGeneral({ ...general, open_hour: Number(e.target.value) })
-                }
+                onChange={(open_hour) => setGeneral({ ...general, open_hour })}
+                min={0}
+                maxExclusive={24}
+                placeholder="من الساعة…"
               />
             </div>
             <div className="space-y-2">
               <Label>ساعة النهاية</Label>
-              <Input
-                type="number"
+              <HourSelect
                 value={general.close_hour}
-                onChange={(e) =>
-                  setGeneral({ ...general, close_hour: Number(e.target.value) })
+                onChange={(close_hour) =>
+                  setGeneral({ ...general, close_hour })
                 }
+                min={1}
+                maxExclusive={25}
+                placeholder="إلى الساعة…"
               />
             </div>
             <div className="space-y-2">
               <Label>أقصى أسابيع للحجز مقدماً</Label>
               <Input
                 type="number"
+                min={1}
+                max={52}
                 value={general.max_weeks_ahead}
                 onChange={(e) =>
                   setGeneral({
@@ -249,24 +262,26 @@ export function SettingsForm({ settings }: SettingsFormProps) {
                     max_weeks_ahead: Number(e.target.value),
                   })
                 }
+                placeholder="مثال: 4"
               />
             </div>
             <div className="space-y-2">
               <Label>بداية الأسبوع</Label>
-              <select
-                className="flex h-12 w-full rounded-xl border border-input bg-card px-3.5 text-base"
-                value={general.week_start_day}
-                onChange={(e) =>
-                  setGeneral({
-                    ...general,
-                    week_start_day: Number(e.target.value),
-                  })
+              <Select
+                value={String(general.week_start_day)}
+                onValueChange={(v) =>
+                  setGeneral({ ...general, week_start_day: Number(v) })
                 }
               >
-                <option value={5}>الجمعة</option>
-                <option value={6}>السبت</option>
-                <option value={0}>الأحد</option>
-              </select>
+                <SelectTrigger className="h-12 rounded-xl text-base font-semibold">
+                  <SelectValue placeholder="اختر يوم البداية" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="5">الجمعة</SelectItem>
+                  <SelectItem value="6">السبت</SelectItem>
+                  <SelectItem value="0">الأحد</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2 sm:col-span-2">
               <Label>الملاحظات الهامة</Label>
@@ -276,6 +291,7 @@ export function SettingsForm({ settings }: SettingsFormProps) {
                 onChange={(e) =>
                   setGeneral({ ...general, important_notes: e.target.value })
                 }
+                placeholder="ملاحظات تظهر لمقدم الطلب قبل تأكيد الحجز…"
               />
             </div>
             <Button
@@ -400,6 +416,7 @@ export function SettingsForm({ settings }: SettingsFormProps) {
                   onChange={(e) =>
                     setEvo({ ...evo, evolution_instance: e.target.value })
                   }
+                  placeholder="اسم الـ Instance"
                 />
               </div>
               <div className="space-y-2">
@@ -627,6 +644,7 @@ export function SettingsForm({ settings }: SettingsFormProps) {
                     smtp_port: Number(e.target.value) || 587,
                   })
                 }
+                placeholder="587 أو 465"
               />
             </div>
             <div className="flex items-end pb-1">

@@ -38,6 +38,7 @@ import {
 } from "@/lib/actions/admin";
 import { Button } from "@/components/ui/button";
 import { DatePicker } from "@/components/ui/date-picker";
+import { HourSelect } from "@/components/ui/hour-select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -76,7 +77,7 @@ export type ScheduleRow = {
   rooms?: { name: string; color: string } | null;
 };
 
-type StatusFilter = "active" | "inactive" | "deleted" | "review" | "all";
+type StatusFilter = "active" | "inactive" | "deleted" | "all";
 
 const PAGE_SIZE = 25;
 
@@ -128,7 +129,6 @@ export function SchedulesManager({
         if (status === "active" && (deleted || !s.is_active)) return false;
         if (status === "inactive" && (deleted || s.is_active)) return false;
         if (status === "deleted" && !deleted) return false;
-        if (status === "review" && (deleted || !s.needs_review)) return false;
         if (day !== "all" && s.day_of_week !== Number(day)) return false;
         if (roomId !== "all" && s.room_id !== roomId) return false;
         if (!q) return true;
@@ -153,10 +153,6 @@ export function SchedulesManager({
     day === "all" &&
     roomId === "all" &&
     page === 1;
-
-  const reviewCount = schedules.filter(
-    (s) => s.needs_review && s.is_active && !s.deleted_at
-  ).length;
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -206,7 +202,7 @@ export function SchedulesManager({
         end_hour: form.end_hour,
         title: form.title.trim(),
         notes: form.notes,
-        needs_review: form.needs_review,
+        needs_review: false,
         valid_from: form.valid_from || null,
         valid_until: form.valid_until || null,
         is_active: form.is_active,
@@ -251,16 +247,6 @@ export function SchedulesManager({
 
   return (
     <div className="space-y-4">
-      {reviewCount > 0 && (
-        <button
-          type="button"
-          onClick={() => setStatus("review")}
-          className="w-full rounded-xl border border-amber-9 bg-amber-3 px-4 py-3 text-right text-sm font-medium text-amber-11 hover:bg-amber-3/80"
-        >
-          يوجد {reviewCount} موعد يحتاج مراجعة — اضغط للعرض
-        </button>
-      )}
-
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-1 flex-wrap items-center gap-2 min-w-[240px]">
           <div className="relative min-w-[220px] flex-1">
@@ -305,7 +291,6 @@ export function SchedulesManager({
             <SelectContent>
               <SelectItem value="active">نشط</SelectItem>
               <SelectItem value="inactive">موقوف</SelectItem>
-              <SelectItem value="review">يحتاج مراجعة</SelectItem>
               <SelectItem value="deleted">محذوف</SelectItem>
               <SelectItem value="all">الكل</SelectItem>
             </SelectContent>
@@ -403,6 +388,7 @@ export function SchedulesManager({
                 <Input
                   value={form.title}
                   onChange={(e) => setForm({ ...form, title: e.target.value })}
+                  placeholder="مثال: اجتماع الخدام / ابتدائي"
                 />
               </div>
               <div className="space-y-2">
@@ -443,22 +429,22 @@ export function SchedulesManager({
               </div>
               <div className="space-y-2">
                 <Label>من الساعة</Label>
-                <Input
-                  type="number"
-                  min={0}
-                  max={23}
+                <HourSelect
                   value={form.start_hour}
-                  onChange={(e) => setForm({ ...form, start_hour: Number(e.target.value) })}
+                  onChange={(start_hour) => setForm({ ...form, start_hour })}
+                  min={0}
+                  maxExclusive={24}
+                  placeholder="من الساعة…"
                 />
               </div>
               <div className="space-y-2">
                 <Label>إلى الساعة</Label>
-                <Input
-                  type="number"
-                  min={1}
-                  max={24}
+                <HourSelect
                   value={form.end_hour}
-                  onChange={(e) => setForm({ ...form, end_hour: Number(e.target.value) })}
+                  onChange={(end_hour) => setForm({ ...form, end_hour })}
+                  min={1}
+                  maxExclusive={25}
+                  placeholder="إلى الساعة…"
                 />
               </div>
               <div className="space-y-2">
@@ -482,15 +468,9 @@ export function SchedulesManager({
                 <Input
                   value={form.notes}
                   onChange={(e) => setForm({ ...form, notes: e.target.value })}
+                  placeholder="ملاحظات اختيارية…"
                 />
               </div>
-              <label className="flex items-center gap-2 text-base">
-                <Switch
-                  checked={form.needs_review}
-                  onCheckedChange={(v) => setForm({ ...form, needs_review: v })}
-                />
-                يحتاج مراجعة
-              </label>
               <label className="flex items-center gap-2 text-base">
                 <Switch
                   checked={form.is_active}
@@ -563,14 +543,7 @@ function SortableScheduleRow({
           <GripVertical className="h-5 w-5" />
         </button>
       </td>
-      <td className="px-3 py-3 font-semibold">
-        <div className="flex flex-wrap items-center gap-2">
-          {schedule.title}
-          {schedule.needs_review && !deleted && (
-            <Badge variant="pending">مراجعة</Badge>
-          )}
-        </div>
-      </td>
+      <td className="px-3 py-3 font-semibold">{schedule.title}</td>
       <td className="px-3 py-3">
         <span className="inline-flex items-center gap-2">
           <span

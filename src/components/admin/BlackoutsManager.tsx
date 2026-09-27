@@ -9,6 +9,7 @@ import {
 } from "@/lib/actions/admin";
 import { Button } from "@/components/ui/button";
 import { DatePicker } from "@/components/ui/date-picker";
+import { HourSelect } from "@/components/ui/hour-select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -111,20 +112,32 @@ export function BlackoutsManager({
             </Select>
           </div>
           <div className="space-y-2">
-            <Label>من</Label>
-            <Input
-              type="number"
+            <Label>من الساعة</Label>
+            <HourSelect
               value={start}
-              onChange={(e) => setStart(Number(e.target.value))}
+              onChange={setStart}
+              min={0}
+              maxExclusive={24}
+              placeholder="من الساعة…"
             />
           </div>
           <div className="space-y-2">
-            <Label>إلى</Label>
-            <Input type="number" value={end} onChange={(e) => setEnd(Number(e.target.value))} />
+            <Label>إلى الساعة</Label>
+            <HourSelect
+              value={end}
+              onChange={setEnd}
+              min={1}
+              maxExclusive={25}
+              placeholder="إلى الساعة…"
+            />
           </div>
           <div className="space-y-2 sm:col-span-2">
             <Label>السبب</Label>
-            <Input value={reason} onChange={(e) => setReason(e.target.value)} />
+            <Input
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder="مثال: صيانة / اجتماع الخدام"
+            />
           </div>
           <Button
             className="sm:col-span-2"

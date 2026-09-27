@@ -37,6 +37,7 @@ export function AccountForm({ profile }: { profile: Profile }) {
             <Input
               value={form.full_name}
               onChange={(e) => setForm({ ...form, full_name: e.target.value })}
+              placeholder="الاسم بالكامل"
             />
           </div>
           <div className="space-y-2">
@@ -47,6 +48,7 @@ export function AccountForm({ profile }: { profile: Profile }) {
               className="text-left"
               value={form.email}
               onChange={(e) => setForm({ ...form, email: e.target.value })}
+              placeholder="name@example.com"
             />
           </div>
           <div className="space-y-2">

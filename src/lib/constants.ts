@@ -47,6 +47,7 @@ export const DEFAULT_IMPORTANT_NOTES = `1. اجتماع الخدام الشهر�
 5. يُغلق التكييف والمراوح بعد كل خدمة بواسطة المسؤول والخدام الحاضرين.`;
 
 export function hourLabel(hour: number): string {
+  if (hour === 24) return "12 ص";
   if (hour === 0) return "12 ص";
   if (hour < 12) return `${hour} ص`;
   if (hour === 12) return "12 م";

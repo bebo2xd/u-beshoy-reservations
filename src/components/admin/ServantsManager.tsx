@@ -343,6 +343,7 @@ export function ServantsManager({ servants: initial }: { servants: Profile[] }) 
                   className="text-left"
                   value={form.email}
                   onChange={(e) => setForm({ ...form, email: e.target.value })}
+                  placeholder="name@example.com"
                 />
               </div>
               <div className="space-y-2">

@@ -36,7 +36,7 @@ export function SlotCell({
         past && !busy
           ? "تاريخ ماضي — غير متاح للحجز"
           : busy
-            ? `${block.title}${block.needs_review ? " (يحتاج مراجعة)" : ""}`
+            ? block.title
             : `متاح — الساعة ${hour}`
       }
       className={cn(
@@ -62,8 +62,7 @@ export function SlotCell({
         busy &&
           !isBlackout &&
           !isPending &&
-          "cursor-not-allowed text-white border-transparent shadow-sm",
-        busy && block?.needs_review && "ring-2 ring-inset ring-amber-9"
+          "cursor-not-allowed text-white border-transparent shadow-sm"
       )}
       style={
         busy && !isBlackout && !isPending
