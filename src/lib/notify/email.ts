@@ -1,30 +1,79 @@
-const RESEND_KEY = () => process.env.RESEND_API_KEY;
-const ADMIN_EMAIL = () => process.env.ADMIN_EMAIL;
-const FROM_EMAIL = () => process.env.FROM_EMAIL ?? "onboarding@resend.dev";
+import nodemailer from "nodemailer";
+import { getSmtpConfig, type SmtpConfig } from "./smtp";
 
-export async function sendAdminEmail(subject: string, html: string): Promise<boolean> {
-  const key = RESEND_KEY();
-  const to = ADMIN_EMAIL();
-  if (!key || !to) return false;
+export async function sendAdminEmail(
+  subject: string,
+  html: string
+): Promise<boolean> {
+  const cfg = await getSmtpConfig();
+  if (!cfg) return false;
+  return sendMail(cfg, cfg.adminEmail, subject, html);
+}
 
+async function sendMail(
+  cfg: SmtpConfig,
+  to: string,
+  subject: string,
+  html: string
+): Promise<boolean> {
   try {
-    const res = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${key}`,
-        "Content-Type": "application/json",
+    const transporter = nodemailer.createTransport({
+      host: cfg.host,
+      port: cfg.port,
+      secure: cfg.secure,
+      auth: {
+        user: cfg.user,
+        pass: cfg.password,
       },
-      body: JSON.stringify({
-        from: FROM_EMAIL(),
-        to: [to],
-        subject,
-        html,
-      }),
     });
-    return res.ok;
+
+    await transporter.sendMail({
+      from: cfg.from,
+      to,
+      subject,
+      html,
+    });
+    return true;
   } catch (e) {
-    console.error("Email send failed", e);
+    console.error("SMTP send failed", e);
     return false;
+  }
+}
+
+export async function sendTestSmtpEmail(): Promise<
+  { ok: true } | { ok: false; error: string }
+> {
+  const cfg = await getSmtpConfig();
+  if (!cfg) {
+    return {
+      ok: false,
+      error: "إعدادات SMTP غير مكتملة (المضيف / المستخدم / كلمة المرور / إيميل الأدمن)",
+    };
+  }
+  try {
+    const transporter = nodemailer.createTransport({
+      host: cfg.host,
+      port: cfg.port,
+      secure: cfg.secure,
+      auth: {
+        user: cfg.user,
+        pass: cfg.password,
+      },
+    });
+    await transporter.verify();
+    await transporter.sendMail({
+      from: cfg.from,
+      to: cfg.adminEmail,
+      subject: "اختبار SMTP — حجز الغرف",
+      html: `<div dir="rtl" style="font-family:Tahoma,Arial,sans-serif">
+        <p>لو وصلت الرسالة دي، إعدادات SMTP شغّالة ✓</p>
+      </div>`,
+    });
+    return { ok: true };
+  } catch (e) {
+    const message = e instanceof Error ? e.message : "فشل إرسال الاختبار";
+    console.error("SMTP test failed", e);
+    return { ok: false, error: message };
   }
 }
 

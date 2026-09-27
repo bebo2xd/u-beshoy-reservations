@@ -14,10 +14,10 @@ export default async function SchedulesPage() {
       <div>
         <h1 className="text-2xl font-bold">المواعيد الثابتة</h1>
         <p className="text-sm text-muted-foreground">
-          الجدول الأسبوعي الافتراضي — قابل للتعديل
+          جدول قابل للبحث والفلترة مع ترتيب بالسحب والإفلات وحذف ناعم
         </p>
       </div>
-      <SchedulesManager schedules={schedules as never} rooms={rooms} />
+      <SchedulesManager schedules={schedules} rooms={rooms} />
     </div>
   );
 }

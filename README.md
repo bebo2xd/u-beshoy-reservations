@@ -1,13 +1,14 @@
 # حجز غرف مبنى الخدمات
 
 نظام حجز مواعيد غرف لمبنى خدمات كنسي — Next.js + Supabase  
-الحجز بالساعة من الجمعة للخميس (11 ص – 9 م)، مع موافقة الإدارة، ومواعيد ثابتة مسبقة، وتنبيهات Telegram / Email / WhatsApp.
+الحجز بالساعة من الجمعة للخميس (11 ص – 9 م)، **للخدام المسجّلين فقط**، مع موافقة الإدارة، ومواعيد ثابتة مسبقة، وتنبيهات Telegram / Email / WhatsApp.
 
 ## المميزات
 
+- حجز مقفول بحسابات خدام (أدمن / خادم) من لوحة التحكم
 - أماكن ديناميكية (كنائس + فصول + قاعة السطح + KG)
 - جدول أسبوع RTL للابتوب، وعرض يوم للموبايل
-- طلبات حجز تحتاج موافقة، مع كود متابعة
+- طلبات حجز تحتاج موافقة، مع كود متابعة وصفحة «طلباتي»
 - منع التعارض (موعد ثابت / حجز / وقت مقفول) على مستوى قاعدة البيانات
 - مواعيد ثابتة من الجدول الكنسي + علامة «يحتاج مراجعة» للأوقات الناقصة
 - اجتماع الخدام الشهري: قفل كل الأماكن من 7 م بضغطة من لوحة التحكم
@@ -32,15 +33,18 @@ cp .env.example .env.local
 
 ### 3) قاعدة البيانات
 
-من لوحة Supabase → SQL Editor:
+من لوحة Supabase → SQL Editor بالترتيب:
 
-1. نفّذ محتوى [`supabase/migrations/0001_init.sql`](supabase/migrations/0001_init.sql)
-2. نفّذ محتوى [`supabase/seed.sql`](supabase/seed.sql)
+1. [`supabase/migrations/0001_init.sql`](supabase/migrations/0001_init.sql)
+2. [`supabase/migrations/0002_soft_delete_sort.sql`](supabase/migrations/0002_soft_delete_sort.sql)
+3. [`supabase/migrations/0003_profiles_roles.sql`](supabase/migrations/0003_profiles_roles.sql)
+4. [`supabase/seed.sql`](supabase/seed.sql)
 
 ### 4) إنشاء مستخدم أدمن
 
-Authentication → Users → Add user  
-أدخل إيميل وباسورد، ثم ادخل من `/admin/login`.
+Authentication → Users → Add user (مثلاً `admin@beshoy.local`)  
+ثم تأكد أن صفّه موجود في جدول `profiles` بدور `admin` (الـ migration 0003 يعمل ذلك للإيميل المذكور).  
+الدخول من [`/login`](http://localhost:3000/login).
 
 ### 5) تشغيل المشروع
 
@@ -48,8 +52,10 @@ Authentication → Users → Add user
 npm run dev
 ```
 
-- صفحة الحجز: [http://localhost:3000/book](http://localhost:3000/book)
-- لوحة التحكم: [http://localhost:3000/admin](http://localhost:3000/admin)
+- تسجيل الدخول: [http://localhost:3000/login](http://localhost:3000/login)
+- صفحة الحجز (بعد الدخول): [http://localhost:3000/book](http://localhost:3000/book)
+- لوحة التحكم (أدمن): [http://localhost:3000/admin](http://localhost:3000/admin)
+- إدارة الخدام: [http://localhost:3000/admin/servants](http://localhost:3000/admin/servants)
 
 ## النشر على Vercel
 

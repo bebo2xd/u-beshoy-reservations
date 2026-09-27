@@ -1,14 +1,33 @@
 import { AdminNav } from "@/components/admin/AdminNav";
+import { getProfile, getUserPermissions } from "@/lib/auth/session";
 
-export default function ProtectedAdminLayout({
+export default async function ProtectedAdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const [permissions, profile] = await Promise.all([
+    getUserPermissions(),
+    getProfile(),
+  ]);
+
   return (
-    <div className="flex min-h-screen flex-col bg-sand-1 lg:flex-row">
-      <AdminNav />
-      <main className="flex-1 p-4 sm:p-6 lg:p-8">{children}</main>
+    <div className="flex h-dvh flex-col overflow-hidden bg-sand-1 lg:flex-row">
+      <AdminNav
+        permissions={Array.from(permissions)}
+        user={
+          profile
+            ? {
+                full_name: profile.full_name,
+                email: profile.email,
+                role: profile.role,
+              }
+            : null
+        }
+      />
+      <main className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 sm:p-6 lg:p-8">
+        {children}
+      </main>
     </div>
   );
 }

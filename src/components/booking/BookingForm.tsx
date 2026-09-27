@@ -28,6 +28,8 @@ interface BookingFormProps {
   startHour: number;
   endHour: number;
   importantNotes: string;
+  requesterName: string;
+  requesterPhone: string;
   onSuccess?: () => void;
 }
 
@@ -40,6 +42,8 @@ export function BookingForm({
   startHour,
   endHour,
   importantNotes,
+  requesterName,
+  requesterPhone,
   onSuccess,
 }: BookingFormProps) {
   const router = useRouter();
@@ -61,8 +65,6 @@ export function BookingForm({
         startHour,
         endHour,
         serviceName: String(fd.get("serviceName") ?? ""),
-        requesterName: String(fd.get("requesterName") ?? ""),
-        requesterPhone: String(fd.get("requesterPhone") ?? ""),
         notes: String(fd.get("notes") ?? ""),
         honeypot,
       });
@@ -79,16 +81,20 @@ export function BookingForm({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="overflow-y-auto sm:mx-auto sm:max-w-lg sm:rounded-t-2xl">
+      <SheetContent
+        side="bottom"
+        className="overflow-y-auto sm:mx-auto sm:max-w-lg sm:rounded-t-3xl"
+      >
         <SheetHeader>
-          <SheetTitle>طلب حجز مكان</SheetTitle>
-          <SheetDescription>
-            {roomName} — {formatDateAr(date)} — {rangeLabel(startHour, endHour)}
+          <SheetTitle className="text-2xl">طلب حجز مكان</SheetTitle>
+          <SheetDescription className="text-base font-medium text-sand-11">
+            {roomName}
+            <br />
+            {formatDateAr(date)} · {rangeLabel(startHour, endHour)}
           </SheetDescription>
         </SheetHeader>
 
-        <form onSubmit={handleSubmit} className="mt-2 space-y-4">
-          {/* honeypot */}
+        <form onSubmit={handleSubmit} className="mt-3 space-y-5">
           <input
             type="text"
             name="website"
@@ -99,24 +105,21 @@ export function BookingForm({
             autoComplete="off"
           />
 
+          <div className="rounded-2xl border border-border bg-sand-2 p-4 text-sm">
+            <p className="font-bold text-sand-12">بيانات الخادم</p>
+            <p className="mt-1 font-semibold">{requesterName}</p>
+            <p className="mt-0.5 text-sand-11" dir="ltr">
+              {requesterPhone}
+            </p>
+          </div>
+
           <div className="space-y-2">
             <Label htmlFor="serviceName">اسم الخدمة / الاجتماع</Label>
-            <Input id="serviceName" name="serviceName" required placeholder="مثال: اجتماع الشباب" />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="requesterName">اسم مقدم الطلب</Label>
-            <Input id="requesterName" name="requesterName" required placeholder="الاسم بالكامل" />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="requesterPhone">رقم الواتساب</Label>
             <Input
-              id="requesterPhone"
-              name="requesterPhone"
+              id="serviceName"
+              name="serviceName"
               required
-              inputMode="tel"
-              dir="ltr"
-              className="text-left"
-              placeholder="01xxxxxxxxx"
+              placeholder="مثال: اجتماع الشباب"
             />
           </div>
           <div className="space-y-2">
@@ -124,26 +127,31 @@ export function BookingForm({
             <Textarea id="notes" name="notes" placeholder="أي تفاصيل إضافية" />
           </div>
 
-          <div className="rounded-xl border border-border bg-sand-2 p-3">
-            <p className="mb-2 text-sm font-semibold text-tomato-9">ملاحظات هامة</p>
-            <pre className="whitespace-pre-wrap font-sans text-xs leading-relaxed text-muted-foreground">
+          <div className="rounded-2xl border border-border bg-sand-2 p-4">
+            <p className="mb-2 text-base font-bold text-tomato-9">ملاحظات هامة</p>
+            <pre className="whitespace-pre-wrap font-sans text-sm leading-7 text-sand-11">
               {importantNotes}
             </pre>
-            <label className="mt-3 flex items-start gap-2 text-sm">
+            <label className="mt-4 flex items-start gap-3 text-base font-medium">
               <Checkbox
                 checked={agreed}
                 onCheckedChange={(v) => setAgreed(v === true)}
-                className="mt-0.5"
+                className="mt-0.5 h-6 w-6"
               />
               <span>قرأت الملاحظات وأوافق عليها</span>
             </label>
           </div>
 
-          <p className="text-xs text-muted-foreground">
+          <p className="text-sm font-medium text-sand-11">
             الطلب يحتاج موافقة الإدارة قبل تأكيد الحجز.
           </p>
 
-          <Button type="submit" className="w-full" size="lg" disabled={pending || !agreed}>
+          <Button
+            type="submit"
+            className="w-full"
+            size="lg"
+            disabled={pending || !agreed}
+          >
             {pending ? "جاري الإرسال..." : "إرسال طلب الحجز"}
           </Button>
         </form>

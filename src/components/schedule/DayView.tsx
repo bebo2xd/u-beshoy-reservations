@@ -2,6 +2,7 @@
 
 import { hourLabel } from "@/lib/constants";
 import { getBlocksForSlot } from "@/lib/availability";
+import { todayCairo } from "@/lib/dates";
 import type { OccupancyBlock, Room, WeekDay } from "@/lib/types";
 import { SlotCell } from "./SlotCell";
 import { cn } from "@/lib/utils";
@@ -31,61 +32,86 @@ export function DayView({
   selectedHours = [],
   onSelectSlot,
 }: DayViewProps) {
+  const today = todayCairo();
+  const activeIsPast = activeDate < today;
+
   return (
-    <div className="space-y-4">
-      <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-thin">
-        {days.map((d) => (
-          <button
-            key={d.date}
-            type="button"
-            onClick={() => onChangeDate(d.date)}
-            className={cn(
-              "shrink-0 rounded-xl border px-3 py-2 text-center transition-colors min-w-[72px]",
-              activeDate === d.date
-                ? "border-primary bg-primary text-primary-foreground"
-                : "border-border bg-card hover:bg-secondary"
-            )}
-          >
-            <div className="text-sm font-semibold">{d.shortLabel}</div>
-            <div className="text-[11px] opacity-80">{d.date.slice(8)}/{d.date.slice(5, 7)}</div>
-          </button>
-        ))}
+    <div className="space-y-5">
+      <div className="flex gap-2.5 overflow-x-auto pb-2 scrollbar-thin -mx-1 px-1">
+        {days.map((d, i) => {
+          const isActive = activeDate === d.date;
+          return (
+            <button
+              key={d.date}
+              type="button"
+              onClick={() => onChangeDate(d.date)}
+              className={cn(
+                "shrink-0 rounded-2xl border px-3.5 py-3 text-center transition-all duration-200 min-w-[86px] active:scale-95",
+                "animate-fade-in",
+                `stagger-${Math.min(i + 1, 5)}`,
+                isActive
+                  ? "border-primary bg-primary text-primary-foreground shadow-md scale-[1.02]"
+                  : "border-border bg-card hover:border-primary/40 hover:bg-teal-3"
+              )}
+            >
+              <div className="text-base font-bold">{d.shortLabel}</div>
+              <div className="mt-0.5 text-sm font-medium opacity-85">
+                {d.date.slice(8)}/{d.date.slice(5, 7)}
+              </div>
+            </button>
+          );
+        })}
       </div>
 
-      <div className="space-y-3">
-        {rooms.map((room) => (
+      <div className="space-y-4">
+        {rooms.map((room, idx) => (
           <div
             key={room.id}
-            className="rounded-xl border border-border bg-card p-3 shadow-sm"
+            className={cn(
+              "rounded-2xl border border-border bg-card p-4 shadow-sm transition-shadow hover:shadow-md animate-rise-in",
+              `stagger-${Math.min((idx % 5) + 1, 5)}`
+            )}
           >
-            <div className="mb-2 flex items-center gap-2">
+            <div className="mb-3 flex items-center gap-2.5">
               <span
-                className="h-3 w-3 rounded-full"
+                className="h-3.5 w-3.5 rounded-full ring-2 ring-sand-3"
                 style={{ backgroundColor: room.color }}
               />
-              <h3 className="font-semibold">{room.name}</h3>
+              <h3 className="text-lg font-bold tracking-tight">{room.name}</h3>
               {room.floor && (
-                <span className="text-xs text-muted-foreground">({room.floor})</span>
+                <span className="rounded-lg bg-sand-3 px-2 py-0.5 text-sm font-medium text-sand-11">
+                  {room.floor}
+                </span>
               )}
             </div>
-            <div className="grid grid-cols-5 gap-1.5 sm:grid-cols-5">
+            <div className="grid grid-cols-5 gap-2">
               {hours.map((h) => {
-                const blocks = getBlocksForSlot(occupancy, room.id, activeDate, h);
+                const blocks = getBlocksForSlot(
+                  occupancy,
+                  room.id,
+                  activeDate,
+                  h
+                );
                 const selected =
+                  !activeIsPast &&
                   selectedRoomId === room.id &&
                   selectedDate === activeDate &&
                   selectedHours.includes(h);
                 return (
-                  <div key={h} className="flex flex-col gap-0.5">
-                    <span className="text-center text-[10px] text-muted-foreground">
+                  <div key={h} className="flex flex-col gap-1">
+                    <span className="text-center text-xs font-semibold text-sand-11">
                       {hourLabel(h)}
                     </span>
                     <SlotCell
                       hour={h}
                       blocks={blocks}
                       selected={selected}
+                      past={activeIsPast}
                       compact
-                      onClick={() => onSelectSlot?.(room.id, activeDate, h)}
+                      onClick={() =>
+                        !activeIsPast &&
+                        onSelectSlot?.(room.id, activeDate, h)
+                      }
                     />
                   </div>
                 );

@@ -118,7 +118,19 @@ CREATE TABLE public.settings (
   max_weeks_ahead smallint NOT NULL DEFAULT 4,
   important_notes text NOT NULL DEFAULT '',
   site_title text NOT NULL DEFAULT 'حجز غرف مبنى الخدمات',
-  updated_at timestamptz NOT NULL DEFAULT now()
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  notification_prefs jsonb NOT NULL DEFAULT '{}'::jsonb,
+  evolution_url text,
+  evolution_api_key text,
+  evolution_instance text,
+  admin_whatsapp text,
+  smtp_host text,
+  smtp_port int DEFAULT 587,
+  smtp_secure boolean NOT NULL DEFAULT false,
+  smtp_user text,
+  smtp_password text,
+  smtp_from text,
+  admin_email text
 );
 
 INSERT INTO public.settings (id, important_notes) VALUES (
@@ -149,14 +161,16 @@ RETURNS text
 LANGUAGE plpgsql
 AS $$
 DECLARE
-  chars text := 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  chars text := '123456789';
   result text := '';
   i int;
+  prefix text;
 BEGIN
-  FOR i IN 1..8 LOOP
+  prefix := to_char((now() AT TIME ZONE 'Africa/Cairo')::date, 'YYYYMMDD');
+  FOR i IN 1..4 LOOP
     result := result || substr(chars, 1 + floor(random() * length(chars))::int, 1);
   END LOOP;
-  RETURN result;
+  RETURN prefix || '-' || result;
 END;
 $$;
 

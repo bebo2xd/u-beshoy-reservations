@@ -24,6 +24,11 @@ const DEFAULT_SETTINGS: AppSettings = {
   max_weeks_ahead: 4,
   important_notes: DEFAULT_IMPORTANT_NOTES,
   site_title: "حجز غرف مبنى الخدمات",
+  notification_prefs: undefined,
+  evolution_url: null,
+  evolution_api_key: null,
+  evolution_instance: null,
+  admin_whatsapp: null,
 };
 
 export async function getSettings(): Promise<AppSettings> {
@@ -43,6 +48,7 @@ export async function getActiveRooms(): Promise<Room[]> {
       .from("rooms")
       .select("*")
       .eq("is_active", true)
+      .is("deleted_at", null)
       .order("sort_order");
     return (data as Room[]) ?? [];
   } catch {
@@ -68,8 +74,18 @@ export async function getWeekScheduleData(weekStart?: string) {
 
   const [roomsRes, schedulesRes, exceptionsRes, blackoutsRes, bookingsRes] =
     await Promise.all([
-      supabase.from("rooms").select("*").eq("is_active", true).order("sort_order"),
-      supabase.from("recurring_schedules").select("*").eq("is_active", true),
+      supabase
+        .from("rooms")
+        .select("*")
+        .eq("is_active", true)
+        .is("deleted_at", null)
+        .order("sort_order"),
+      supabase
+        .from("recurring_schedules")
+        .select("*")
+        .eq("is_active", true)
+        .is("deleted_at", null)
+        .order("sort_order"),
       supabase
         .from("schedule_exceptions")
         .select("*")
@@ -122,10 +138,11 @@ export async function getSchedulesWithRooms() {
   const supabase = await createClient();
   const { data } = await supabase
     .from("recurring_schedules")
-    .select("*, rooms(*)")
-    .order("day_of_week")
-    .order("start_hour");
-  return data ?? [];
+    .select("*, rooms(name, color)")
+    .order("sort_order");
+  return (data as Array<
+    RecurringSchedule & { rooms: { name: string; color: string } | null }
+  >) ?? [];
 }
 
 export async function getBlackouts() {

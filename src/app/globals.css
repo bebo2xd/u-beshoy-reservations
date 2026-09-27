@@ -48,7 +48,7 @@
   --green-9: #30a46c;
   --green-11: #18794e;
 
-  --background: var(--sand-1);
+  --background: var(--sand-2);
   --foreground: var(--sand-12);
   --card: #ffffff;
   --card-foreground: var(--sand-12);
@@ -69,7 +69,10 @@
   --ring: var(--teal-8);
   --pending: var(--amber-9);
   --pending-foreground: var(--amber-12);
-  --radius: 0.75rem;
+  --radius: 1rem;
+
+  /* Readable base size for older users */
+  --text-base: 1.0625rem;
 }
 
 @theme inline {
@@ -124,32 +127,146 @@
   border-color: var(--border);
 }
 
+html {
+  font-size: 17px;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
 body {
-  background: var(--background);
+  background-color: var(--background);
   color: var(--foreground);
   font-family: var(--font-arabic), "Segoe UI", Tahoma, sans-serif;
+  font-size: var(--text-base);
+  line-height: 1.65;
+  letter-spacing: 0.01em;
 }
 
 .slot-striped {
   background-image: repeating-linear-gradient(
     -45deg,
     var(--sand-4),
-    var(--sand-4) 4px,
-    var(--sand-3) 4px,
-    var(--sand-3) 8px
+    var(--sand-4) 5px,
+    var(--sand-3) 5px,
+    var(--sand-3) 10px
   );
 }
 
-/* Custom scrollbar */
 .scrollbar-thin::-webkit-scrollbar {
-  height: 8px;
-  width: 8px;
+  height: 10px;
+  width: 10px;
 }
 .scrollbar-thin::-webkit-scrollbar-track {
   background: var(--sand-2);
-  border-radius: 4px;
+  border-radius: 6px;
 }
 .scrollbar-thin::-webkit-scrollbar-thumb {
   background: var(--sand-8);
-  border-radius: 4px;
+  border-radius: 6px;
+}
+
+/* Motions */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes shimmer {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+
+@keyframes soft-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(18, 165, 148, 0.35);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(18, 165, 148, 0);
+  }
+}
+
+@keyframes bar-in {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.45s ease-out both;
+}
+
+.animate-rise-in {
+  animation: rise-in 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.animate-bar-in {
+  animation: bar-in 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.animate-shimmer {
+  background-color: var(--sand-3);
+  animation: shimmer 1.25s ease-in-out infinite;
+}
+
+.animate-soft-pulse {
+  animation: soft-pulse 1.8s ease-in-out infinite;
+}
+
+.stagger-1 { animation-delay: 0.04s; }
+.stagger-2 { animation-delay: 0.08s; }
+.stagger-3 { animation-delay: 0.12s; }
+.stagger-4 { animation-delay: 0.16s; }
+.stagger-5 { animation-delay: 0.2s; }
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-in,
+  .animate-rise-in,
+  .animate-bar-in,
+  .animate-shimmer,
+  .animate-soft-pulse {
+    animation: none !important;
+  }
+}
+
+/* Sonner: زر الإغلاق على يسار الـ Alert (عكس وضع RTL الافتراضي) */
+html[dir="rtl"] [data-sonner-toaster],
+[data-sonner-toaster][dir="rtl"] {
+  --toast-close-button-start: 0 !important;
+  --toast-close-button-end: unset !important;
+  --toast-close-button-transform: translate(-35%, -35%) !important;
+}
+
+html[dir="rtl"] [data-sonner-toast][data-styled="true"] [data-close-button],
+[data-sonner-toaster][dir="rtl"] [data-sonner-toast][data-styled="true"] [data-close-button] {
+  left: 0 !important;
+  right: unset !important;
+  transform: translate(-35%, -35%) !important;
 }

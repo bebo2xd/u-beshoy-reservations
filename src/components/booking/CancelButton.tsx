@@ -13,7 +13,7 @@ export function CancelButton({ code }: { code: string }) {
   return (
     <Button
       variant="destructive"
-      className="w-full"
+      className="w-full sm:w-auto"
       disabled={pending}
       onClick={() => {
         if (!confirm("هل تريد إلغاء طلب الحجز؟")) return;

@@ -8,6 +8,7 @@ import {
   deleteBlackout,
 } from "@/lib/actions/admin";
 import { Button } from "@/components/ui/button";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -58,10 +59,10 @@ export function BlackoutsManager({
         <CardContent className="flex flex-col gap-3 sm:flex-row sm:items-end">
           <div className="flex-1 space-y-2">
             <Label>اختر يوم الثلاثاء</Label>
-            <Input
-              type="date"
+            <DatePicker
               value={meetingDate}
-              onChange={(e) => setMeetingDate(e.target.value)}
+              onChange={setMeetingDate}
+              placeholder="يوم الثلاثاء"
             />
           </div>
           <Button
@@ -91,7 +92,7 @@ export function BlackoutsManager({
         <CardContent className="grid gap-3 sm:grid-cols-2">
           <div className="space-y-2">
             <Label>التاريخ</Label>
-            <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+            <DatePicker value={date} onChange={setDate} placeholder="اختر التاريخ" />
           </div>
           <div className="space-y-2">
             <Label>المكان</Label>

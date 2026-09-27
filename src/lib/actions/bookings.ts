@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getProfile, requireAdmin, requireAuth, requirePermission } from "@/lib/auth/session";
 import { notifyBookingDecision, notifyNewBooking } from "@/lib/notify";
 import { formatDateAr } from "@/lib/dates";
 import { rangeLabel } from "@/lib/constants";
@@ -13,8 +14,6 @@ export async function submitBookingRequest(form: {
   startHour: number;
   endHour: number;
   serviceName: string;
-  requesterName: string;
-  requesterPhone: string;
   notes?: string;
   honeypot?: string;
 }) {
@@ -22,15 +21,19 @@ export async function submitBookingRequest(form: {
     return { ok: false as const, error: "تم رفض الطلب" };
   }
 
-  const supabase = await createClient();
-  const { data, error } = await supabase.rpc("create_booking_request", {
+  const auth = await requireAuth();
+  if (!auth.ok || !auth.supabase || !auth.profile) {
+    return { ok: false as const, error: auth.error ?? "يجب تسجيل الدخول" };
+  }
+
+  const { data, error } = await auth.supabase.rpc("create_booking_request", {
     p_room_id: form.roomId,
     p_date: form.date,
     p_start_hour: form.startHour,
     p_end_hour: form.endHour,
     p_service_name: form.serviceName,
-    p_requester_name: form.requesterName,
-    p_requester_phone: form.requesterPhone,
+    p_requester_name: auth.profile.full_name,
+    p_requester_phone: auth.profile.phone,
     p_notes: form.notes ?? null,
   });
 
@@ -39,14 +42,18 @@ export async function submitBookingRequest(form: {
     return { ok: false as const, error: "حدث خطأ أثناء إرسال الطلب" };
   }
 
-  const result = data as { ok: boolean; error?: string; tracking_code?: string; id?: string };
+  const result = data as {
+    ok: boolean;
+    error?: string;
+    tracking_code?: string;
+    id?: string;
+  };
   if (!result.ok) {
     return { ok: false as const, error: result.error ?? "تعذر إنشاء الطلب" };
   }
 
-  // Fetch room name for notifications
   try {
-    const { data: room } = await supabase
+    const { data: room } = await auth.supabase
       .from("rooms")
       .select("name")
       .eq("id", form.roomId)
@@ -56,8 +63,8 @@ export async function submitBookingRequest(form: {
       id: result.id!,
       tracking_code: result.tracking_code!,
       service_name: form.serviceName,
-      requester_name: form.requesterName,
-      requester_phone: form.requesterPhone,
+      requester_name: auth.profile.full_name,
+      requester_phone: auth.profile.phone,
       room_name: room?.name ?? "مكان",
       date_label: formatDateAr(form.date),
       time_label: rangeLabel(form.startHour, form.endHour),
@@ -68,19 +75,53 @@ export async function submitBookingRequest(form: {
   }
 
   revalidatePath("/book");
+  revalidatePath("/my-bookings");
   revalidatePath("/admin");
   return { ok: true as const, tracking_code: result.tracking_code! };
 }
 
 export async function cancelBooking(code: string) {
-  const supabase = await createClient();
-  const { data, error } = await supabase.rpc("cancel_booking_by_code", {
-    p_code: code,
+  const auth = await requireAuth();
+  if (!auth.ok || !auth.supabase) {
+    return { ok: false as const, error: auth.error ?? "يجب تسجيل الدخول" };
+  }
+
+  const tracking = code.trim().toUpperCase();
+  const { data: booking } = await auth.supabase
+    .from("bookings")
+    .select("requester_phone, service_name, booking_date, start_hour, end_hour, tracking_code, rooms(name)")
+    .eq("tracking_code", tracking)
+    .maybeSingle();
+
+  const { data, error } = await auth.supabase.rpc("cancel_booking_by_code", {
+    p_code: tracking,
   });
   if (error) return { ok: false as const, error: "حدث خطأ" };
   const result = data as { ok: boolean; error?: string };
   if (!result.ok) return { ok: false as const, error: result.error ?? "تعذر الإلغاء" };
+
+  if (booking) {
+    try {
+      const { notifyBookingCancelled } = await import("@/lib/notify");
+      const { formatDateAr } = await import("@/lib/dates");
+      const { rangeLabel } = await import("@/lib/constants");
+      const room = booking.rooms as { name?: string } | null;
+      await notifyBookingCancelled({
+        requester_phone: booking.requester_phone,
+        service_name: booking.service_name,
+        room_name: room?.name ?? "مكان",
+        date_label: formatDateAr(booking.booking_date),
+        time_label: rangeLabel(booking.start_hour, booking.end_hour),
+        tracking_code: booking.tracking_code,
+      });
+    } catch (e) {
+      console.error("Cancel notify failed", e);
+    }
+  }
+
   revalidatePath("/admin");
+  revalidatePath("/my-bookings");
+  revalidatePath("/book");
   return { ok: true as const };
 }
 
@@ -102,18 +143,16 @@ export async function decideBooking(
   status: "approved" | "rejected",
   adminNote?: string
 ) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { ok: false as const, error: "غير مصرح" };
+  const auth = await requirePermission("decide_bookings");
+  if (!auth.ok) {
+    return { ok: false as const, error: auth.error ?? "غير مصرح" };
+  }
 
-  // Prefer service role when available (bypasses RLS edge cases)
-  let admin = supabase;
+  let admin = auth.supabase!;
   try {
     admin = createAdminClient();
   } catch {
-    admin = supabase;
+    /* use session client */
   }
 
   const { data: booking, error } = await admin
@@ -162,5 +201,18 @@ export async function decideBooking(
 
   revalidatePath("/admin");
   revalidatePath("/book");
+  revalidatePath("/my-bookings");
   return { ok: true as const };
+}
+
+export async function getMyBookingsAction() {
+  const profile = await getProfile();
+  if (!profile) return [];
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("bookings")
+    .select("*, rooms(name, color)")
+    .eq("created_by", profile.id)
+    .order("created_at", { ascending: false });
+  return data ?? [];
 }

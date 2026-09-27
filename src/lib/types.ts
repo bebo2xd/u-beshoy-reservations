@@ -1,6 +1,24 @@
+import type { NotificationPrefs } from "@/lib/notify/prefs";
+
 export type BookingStatus = "pending" | "approved" | "rejected" | "cancelled";
 
+export type AppRole = "admin" | "servant";
+
 export type OccupancyKind = "recurring" | "booking" | "blackout" | "pending";
+
+export type { NotificationPrefs };
+
+export interface Profile {
+  id: string;
+  full_name: string;
+  phone: string;
+  email?: string | null;
+  role: AppRole;
+  is_active: boolean;
+  deleted_at?: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
 
 export interface Room {
   id: string;
@@ -9,6 +27,8 @@ export interface Room {
   color: string;
   sort_order: number;
   is_active: boolean;
+  is_core?: boolean;
+  deleted_at?: string | null;
   created_at?: string;
 }
 
@@ -24,6 +44,8 @@ export interface RecurringSchedule {
   valid_from: string | null;
   valid_until: string | null;
   is_active: boolean;
+  sort_order: number;
+  deleted_at?: string | null;
 }
 
 export interface ScheduleException {
@@ -56,6 +78,7 @@ export interface Booking {
   status: BookingStatus;
   admin_note: string | null;
   tracking_code: string;
+  created_by?: string | null;
   created_at: string;
   updated_at?: string;
   rooms?: Room;
@@ -69,6 +92,18 @@ export interface AppSettings {
   max_weeks_ahead: number;
   important_notes: string;
   site_title: string;
+  notification_prefs?: NotificationPrefs;
+  evolution_url?: string | null;
+  evolution_api_key?: string | null;
+  evolution_instance?: string | null;
+  admin_whatsapp?: string | null;
+  smtp_host?: string | null;
+  smtp_port?: number | null;
+  smtp_secure?: boolean | null;
+  smtp_user?: string | null;
+  smtp_password?: string | null;
+  smtp_from?: string | null;
+  admin_email?: string | null;
 }
 
 export interface OccupancyBlock {

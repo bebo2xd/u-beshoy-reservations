@@ -1,9 +1,9 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import { addDays, format, parseISO } from "date-fns";
 import { WeekGrid, Legend } from "@/components/schedule/WeekGrid";
 import { Button } from "@/components/ui/button";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -22,7 +22,7 @@ import {
 import { hoursList, selectionFromHours } from "@/lib/availability";
 import { adminCreateBooking, addException } from "@/lib/actions/admin";
 import type { AppSettings, OccupancyBlock, Room, WeekDay } from "@/lib/types";
-import { getWeekStartFriday } from "@/lib/dates";
+import { getWeekStartFriday, addCalendarDays } from "@/lib/dates";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { ChevronLeft, ChevronRight } from "lucide-react";
@@ -64,10 +64,7 @@ export function AdminCalendar({ days, rooms, occupancy, settings, weekStart }: P
   }
 
   function goWeek(delta: number) {
-    const next = format(
-      addDays(parseISO(weekStart + "T12:00:00"), delta * 7),
-      "yyyy-MM-dd"
-    );
+    const next = addCalendarDays(weekStart, delta * 7);
     router.push(`/admin/calendar?week=${getWeekStartFriday(next)}`);
   }
 
@@ -213,7 +210,7 @@ function ExceptionQuickAdd({
             })}
           </SelectContent>
         </Select>
-        <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+        <DatePicker value={date} onChange={setDate} placeholder="تاريخ الاستثناء" />
         <Button
           disabled={pending || !scheduleId || !date}
           onClick={() => {

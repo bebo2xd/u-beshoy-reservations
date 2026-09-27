@@ -1,50 +1,25 @@
 import { formatPhone } from "@/lib/utils";
+import {
+  evolutionSendText,
+  getEvolutionConfig,
+} from "@/lib/evolution/client";
 
-const URL = () => process.env.EVOLUTION_URL;
-const KEY = () => process.env.EVOLUTION_API_KEY;
-const INSTANCE = () => process.env.EVOLUTION_INSTANCE;
-const ADMIN_WA = () => process.env.ADMIN_WHATSAPP;
-
-async function sendWhatsApp(number: string, text: string): Promise<boolean> {
-  const base = URL();
-  const key = KEY();
-  const instance = INSTANCE();
-  if (!base || !key || !instance || !number) return false;
-
-  const phone = formatPhone(number);
-  try {
-    const res = await fetch(
-      `${base.replace(/\/$/, "")}/message/sendText/${instance}`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          apikey: key,
-        },
-        body: JSON.stringify({
-          number: phone,
-          text,
-        }),
-      }
-    );
-    return res.ok;
-  } catch (e) {
-    console.error("WhatsApp send failed", e);
-    return false;
-  }
-}
-
-export async function notifyAdminNewBookingWhatsApp(text: string): Promise<boolean> {
-  const admin = ADMIN_WA();
-  if (!admin) return false;
-  return sendWhatsApp(admin, text);
+export async function notifyAdminNewBookingWhatsApp(
+  text: string
+): Promise<boolean> {
+  const config = await getEvolutionConfig();
+  if (!config?.adminWhatsapp) return false;
+  const res = await evolutionSendText(config.adminWhatsapp, text);
+  return res.ok;
 }
 
 export async function notifyRequesterWhatsApp(
   phone: string,
   text: string
 ): Promise<boolean> {
-  return sendWhatsApp(phone, text);
+  if (!phone) return false;
+  const res = await evolutionSendText(formatPhone(phone), text);
+  return res.ok;
 }
 
 export function buildNewBookingWhatsAppText(payload: {

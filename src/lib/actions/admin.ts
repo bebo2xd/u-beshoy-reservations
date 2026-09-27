@@ -1,33 +1,194 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { getProfile, requireAdmin as requireAdminSession, requirePermission } from "@/lib/auth/session";
+import type { AppRole } from "@/lib/types";
+import { CUSTOM_FLAG, PERMISSION_KEYS } from "@/lib/permissions";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { formatDateTimeArCairo } from "@/lib/dates";
 
 async function requireAdmin() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) throw new Error("Unauthorized");
-  return supabase;
+  const result = await requireAdminSession();
+  if (!result.ok || !result.supabase) {
+    throw new Error(result.error ?? "Unauthorized");
+  }
+  return result.supabase;
+}
+
+function safeNext(raw: string, role: AppRole) {
+  if (raw.startsWith("/") && !raw.startsWith("//")) {
+    if (raw.startsWith("/admin") && role !== "admin") return "/book";
+    return raw;
+  }
+  return role === "admin" ? "/admin" : "/book";
+}
+
+function normalizePhone(raw: string) {
+  let digits = raw.replace(/\D/g, "");
+  if (digits.startsWith("20") && digits.length >= 11) {
+    digits = `0${digits.slice(2)}`;
+  }
+  return digits;
+}
+
+function looksLikeEmail(value: string) {
+  return value.includes("@");
+}
+
+async function resolveLoginEmail(identifier: string): Promise<string | null> {
+  const trimmed = identifier.trim();
+  if (!trimmed) return null;
+
+  if (looksLikeEmail(trimmed)) {
+    return trimmed.toLowerCase();
+  }
+
+  const phone = normalizePhone(trimmed);
+  if (phone.length < 10) return null;
+
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from("profiles")
+    .select("email, phone")
+    .is("deleted_at", null)
+    .eq("is_active", true);
+
+  const match = (data ?? []).find((row) => {
+    const stored = normalizePhone(row.phone || "");
+    if (!stored) return false;
+    return (
+      stored === phone ||
+      stored.endsWith(phone.slice(-10)) ||
+      phone.endsWith(stored.slice(-10))
+    );
+  });
+
+  return match?.email?.toLowerCase() ?? null;
 }
 
 export async function loginAction(formData: FormData) {
-  const email = String(formData.get("email") ?? "");
+  const identifier = String(
+    formData.get("identifier") ?? formData.get("email") ?? ""
+  ).trim();
   const password = String(formData.get("password") ?? "");
+  const next = String(formData.get("next") ?? "");
+
+  let email: string | null = null;
+  try {
+    email = await resolveLoginEmail(identifier);
+  } catch (e) {
+    console.error("resolveLoginEmail failed", e);
+    return { ok: false as const, error: "تعذر التحقق من بيانات الدخول" };
+  }
+
+  if (!email) {
+    return {
+      ok: false as const,
+      error: "لم يتم العثور على حساب بهذا الإيميل أو رقم التليفون",
+    };
+  }
+
   const supabase = await createClient();
   const { error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) {
     return { ok: false as const, error: "بيانات الدخول غير صحيحة" };
   }
-  redirect("/admin");
+
+  const profile = await getProfile();
+  if (!profile) {
+    await supabase.auth.signOut();
+    return {
+      ok: false as const,
+      error: "الحساب غير مفعّل أو محذوف. تواصل مع الإدارة",
+    };
+  }
+
+  const { data: canAdmin } = await supabase.rpc("is_admin");
+  const dest = safeNext(next, canAdmin === true ? "admin" : "servant");
+  redirect(dest);
 }
 
 export async function logoutAction() {
   const supabase = await createClient();
   await supabase.auth.signOut();
-  redirect("/admin/login");
+  redirect("/login");
+}
+
+export async function updateOwnProfile(form: {
+  full_name: string;
+  phone: string;
+  email: string;
+  password?: string;
+}) {
+  const profile = await getProfile();
+  if (!profile) {
+    return { ok: false as const, error: "يجب تسجيل الدخول" };
+  }
+
+  const full_name = form.full_name.trim();
+  const email = form.email.trim().toLowerCase();
+  const phone = form.phone.replace(/\D/g, "");
+
+  if (full_name.length < 2) {
+    return { ok: false as const, error: "الاسم مطلوب" };
+  }
+  if (!email.includes("@")) {
+    return { ok: false as const, error: "البريد غير صحيح" };
+  }
+  if (phone.length < 10) {
+    return { ok: false as const, error: "رقم التليفون غير صحيح" };
+  }
+
+  const supabase = await createClient();
+  const { error: profileError } = await supabase
+    .from("profiles")
+    .update({ full_name, phone, email })
+    .eq("id", profile.id);
+
+  if (profileError) {
+    // Fallback via service role if RLS blocks email-only changes oddly
+    try {
+      const admin = createAdminClient();
+      const { error } = await admin
+        .from("profiles")
+        .update({ full_name, phone, email })
+        .eq("id", profile.id);
+      if (error) return { ok: false as const, error: error.message };
+    } catch {
+      return { ok: false as const, error: profileError.message };
+    }
+  }
+
+  const authUpdate: {
+    email?: string;
+    password?: string;
+    user_metadata?: object;
+  } = {
+    email,
+    user_metadata: { full_name },
+  };
+  if (form.password && form.password.length >= 6) {
+    authUpdate.password = form.password;
+  }
+
+  try {
+    const admin = createAdminClient();
+    const { error: authError } = await admin.auth.admin.updateUserById(
+      profile.id,
+      authUpdate
+    );
+    if (authError) return { ok: false as const, error: authError.message };
+  } catch (e) {
+    console.error(e);
+    return { ok: false as const, error: "تعذر تحديث بيانات الدخول" };
+  }
+
+  revalidatePath("/admin");
+  revalidatePath("/admin/account");
+  revalidatePath("/book");
+  return { ok: true as const };
 }
 
 export async function upsertRoom(form: {
@@ -35,7 +196,6 @@ export async function upsertRoom(form: {
   name: string;
   floor?: string;
   color: string;
-  sort_order: number;
   is_active: boolean;
 }) {
   const supabase = await requireAdmin();
@@ -46,17 +206,24 @@ export async function upsertRoom(form: {
         name: form.name,
         floor: form.floor || null,
         color: form.color,
-        sort_order: form.sort_order,
         is_active: form.is_active,
       })
       .eq("id", form.id);
     if (error) return { ok: false as const, error: error.message };
   } else {
+    const { data: maxRow } = await supabase
+      .from("rooms")
+      .select("sort_order")
+      .is("deleted_at", null)
+      .order("sort_order", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const sort_order = (maxRow?.sort_order ?? 0) + 1;
     const { error } = await supabase.from("rooms").insert({
       name: form.name,
       floor: form.floor || null,
       color: form.color,
-      sort_order: form.sort_order,
+      sort_order,
       is_active: form.is_active,
     });
     if (error) return { ok: false as const, error: error.message };
@@ -66,11 +233,56 @@ export async function upsertRoom(form: {
   return { ok: true as const };
 }
 
-export async function deleteRoom(id: string) {
+export async function softDeleteRoom(id: string) {
   const supabase = await requireAdmin();
-  const { error } = await supabase.from("rooms").update({ is_active: false }).eq("id", id);
+  const { data: room } = await supabase
+    .from("rooms")
+    .select("is_core, name")
+    .eq("id", id)
+    .maybeSingle();
+  if (room?.is_core) {
+    return {
+      ok: false as const,
+      error: "الأماكن الأساسية مش قابلة للحذف — وقّفها من التعديل لو حابب تخفيها",
+    };
+  }
+  const { error } = await supabase
+    .from("rooms")
+    .update({ deleted_at: new Date().toISOString(), is_active: false })
+    .eq("id", id);
   if (error) return { ok: false as const, error: error.message };
   revalidatePath("/admin/rooms");
+  revalidatePath("/book");
+  return { ok: true as const };
+}
+
+export async function restoreRoom(id: string) {
+  const supabase = await requireAdmin();
+  const { error } = await supabase
+    .from("rooms")
+    .update({ deleted_at: null, is_active: true })
+    .eq("id", id);
+  if (error) return { ok: false as const, error: error.message };
+  revalidatePath("/admin/rooms");
+  revalidatePath("/book");
+  return { ok: true as const };
+}
+
+/** @deprecated use softDeleteRoom */
+export async function deleteRoom(id: string) {
+  return softDeleteRoom(id);
+}
+
+export async function reorderRooms(orderedIds: string[]) {
+  const supabase = await requireAdmin();
+  const updates = orderedIds.map((id, index) =>
+    supabase.from("rooms").update({ sort_order: index + 1 }).eq("id", id)
+  );
+  const results = await Promise.all(updates);
+  const failed = results.find((r) => r.error);
+  if (failed?.error) return { ok: false as const, error: failed.error.message };
+  revalidatePath("/admin/rooms");
+  revalidatePath("/book");
   return { ok: true as const };
 }
 
@@ -107,7 +319,17 @@ export async function upsertSchedule(form: {
       .eq("id", form.id);
     if (error) return { ok: false as const, error: error.message };
   } else {
-    const { error } = await supabase.from("recurring_schedules").insert(payload);
+    const { data: maxRow } = await supabase
+      .from("recurring_schedules")
+      .select("sort_order")
+      .is("deleted_at", null)
+      .order("sort_order", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const { error } = await supabase.from("recurring_schedules").insert({
+      ...payload,
+      sort_order: (maxRow?.sort_order ?? 0) + 1,
+    });
     if (error) return { ok: false as const, error: error.message };
   }
   revalidatePath("/admin/schedules");
@@ -115,14 +337,48 @@ export async function upsertSchedule(form: {
   return { ok: true as const };
 }
 
-export async function deleteSchedule(id: string) {
+export async function softDeleteSchedule(id: string) {
   const supabase = await requireAdmin();
   const { error } = await supabase
     .from("recurring_schedules")
-    .update({ is_active: false })
+    .update({ deleted_at: new Date().toISOString(), is_active: false })
     .eq("id", id);
   if (error) return { ok: false as const, error: error.message };
   revalidatePath("/admin/schedules");
+  revalidatePath("/book");
+  return { ok: true as const };
+}
+
+export async function restoreSchedule(id: string) {
+  const supabase = await requireAdmin();
+  const { error } = await supabase
+    .from("recurring_schedules")
+    .update({ deleted_at: null, is_active: true })
+    .eq("id", id);
+  if (error) return { ok: false as const, error: error.message };
+  revalidatePath("/admin/schedules");
+  revalidatePath("/book");
+  return { ok: true as const };
+}
+
+/** @deprecated use softDeleteSchedule */
+export async function deleteSchedule(id: string) {
+  return softDeleteSchedule(id);
+}
+
+export async function reorderSchedules(orderedIds: string[]) {
+  const supabase = await requireAdmin();
+  const updates = orderedIds.map((id, index) =>
+    supabase
+      .from("recurring_schedules")
+      .update({ sort_order: index + 1 })
+      .eq("id", id)
+  );
+  const results = await Promise.all(updates);
+  const failed = results.find((r) => r.error);
+  if (failed?.error) return { ok: false as const, error: failed.error.message };
+  revalidatePath("/admin/schedules");
+  revalidatePath("/book");
   return { ok: true as const };
 }
 
@@ -184,9 +440,13 @@ export async function updateSettings(form: {
   max_weeks_ahead: number;
   important_notes: string;
   site_title: string;
+  week_start_day?: number;
 }) {
-  const supabase = await requireAdmin();
-  const { error } = await supabase
+  const auth = await requirePermission("manage_settings");
+  if (!auth.ok || !auth.supabase) {
+    return { ok: false as const, error: auth.error ?? "غير مصرح" };
+  }
+  const { error } = await auth.supabase
     .from("settings")
     .update({
       open_hour: form.open_hour,
@@ -194,6 +454,9 @@ export async function updateSettings(form: {
       max_weeks_ahead: form.max_weeks_ahead,
       important_notes: form.important_notes,
       site_title: form.site_title,
+      ...(form.week_start_day != null
+        ? { week_start_day: form.week_start_day }
+        : {}),
       updated_at: new Date().toISOString(),
     })
     .eq("id", 1);
@@ -201,6 +464,159 @@ export async function updateSettings(form: {
   revalidatePath("/admin/settings");
   revalidatePath("/book");
   return { ok: true as const };
+}
+
+export async function updateNotificationPrefsAction(
+  prefs: import("@/lib/notify/prefs").NotificationPrefs
+) {
+  const auth = await requirePermission("manage_settings");
+  if (!auth.ok) return { ok: false as const, error: auth.error };
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from("settings")
+    .update({
+      notification_prefs: prefs,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", 1);
+  if (error) return { ok: false as const, error: error.message };
+  revalidatePath("/admin/settings");
+  return { ok: true as const };
+}
+
+export async function updateSmtpSettingsAction(form: {
+  smtp_host: string;
+  smtp_port: number;
+  smtp_secure: boolean;
+  smtp_user: string;
+  smtp_password: string;
+  smtp_from: string;
+  admin_email: string;
+  keep_password?: boolean;
+}) {
+  const auth = await requirePermission("manage_settings");
+  if (!auth.ok) return { ok: false as const, error: auth.error };
+  const admin = createAdminClient();
+
+  const patch: Record<string, string | number | boolean | null> = {
+    smtp_host: form.smtp_host.trim() || null,
+    smtp_port: form.smtp_port > 0 ? form.smtp_port : 587,
+    smtp_secure: Boolean(form.smtp_secure),
+    smtp_user: form.smtp_user.trim() || null,
+    smtp_from: form.smtp_from.trim() || null,
+    admin_email: form.admin_email.trim().toLowerCase() || null,
+    updated_at: new Date().toISOString(),
+  };
+
+  if (!form.keep_password) {
+    patch.smtp_password = form.smtp_password.trim() || null;
+  } else if (form.smtp_password.trim()) {
+    patch.smtp_password = form.smtp_password.trim();
+  }
+
+  const { error } = await admin.from("settings").update(patch).eq("id", 1);
+  if (error) return { ok: false as const, error: error.message };
+  revalidatePath("/admin/settings");
+  return { ok: true as const };
+}
+
+export async function testSmtpAction() {
+  const auth = await requirePermission("manage_settings");
+  if (!auth.ok) return { ok: false as const, error: auth.error };
+  const { sendTestSmtpEmail } = await import("@/lib/notify/email");
+  return sendTestSmtpEmail();
+}
+
+export async function updateEvolutionSettingsAction(form: {
+  evolution_url: string;
+  evolution_api_key: string;
+  evolution_instance: string;
+  admin_whatsapp: string;
+  keep_api_key?: boolean;
+}) {
+  const auth = await requirePermission("manage_settings");
+  if (!auth.ok) return { ok: false as const, error: auth.error };
+  const admin = createAdminClient();
+
+  const patch: Record<string, string | null> = {
+    evolution_url: form.evolution_url.trim() || null,
+    evolution_instance: form.evolution_instance.trim() || null,
+    admin_whatsapp: form.admin_whatsapp.replace(/\D/g, "") || null,
+    updated_at: new Date().toISOString(),
+  };
+
+  if (!form.keep_api_key) {
+    patch.evolution_api_key = form.evolution_api_key.trim() || null;
+  } else if (form.evolution_api_key.trim()) {
+    patch.evolution_api_key = form.evolution_api_key.trim();
+  }
+
+  const { error } = await admin.from("settings").update(patch).eq("id", 1);
+  if (error) return { ok: false as const, error: error.message };
+  revalidatePath("/admin/settings");
+  return { ok: true as const };
+}
+
+export async function evolutionStatusAction() {
+  const auth = await requirePermission("manage_settings");
+  if (!auth.ok) return { ok: false as const, error: auth.error, state: "denied" };
+  const {
+    evolutionConnectionState,
+  } = await import("@/lib/evolution/client");
+  return evolutionConnectionState();
+}
+
+export async function evolutionQrAction() {
+  const auth = await requirePermission("manage_settings");
+  if (!auth.ok) return { ok: false as const, error: auth.error };
+  const { evolutionFetchQr } = await import("@/lib/evolution/client");
+  return evolutionFetchQr();
+}
+
+export async function evolutionLogoutAction() {
+  const auth = await requirePermission("manage_settings");
+  if (!auth.ok) return { ok: false as const, error: auth.error };
+  const { evolutionLogoutInstance } = await import("@/lib/evolution/client");
+  return evolutionLogoutInstance();
+}
+
+export async function evolutionTestSendAction(phone?: string) {
+  const auth = await requirePermission("manage_settings");
+  if (!auth.ok) return { ok: false as const, error: auth.error };
+  const {
+    evolutionSendText,
+    getEvolutionConfig,
+  } = await import("@/lib/evolution/client");
+  const config = await getEvolutionConfig();
+  const target = (phone || config?.adminWhatsapp || "").trim();
+  if (!target) {
+    return { ok: false as const, error: "حدد رقم واتساب للإرسال التجريبي" };
+  }
+  return evolutionSendText(
+    target,
+    `✅ اختبار اتصال Evolution من نظام حجز الغرف\n${formatDateTimeArCairo()}`
+  );
+}
+
+export async function evolutionCreateInstanceAction(instanceName: string) {
+  const auth = await requirePermission("manage_settings");
+  if (!auth.ok) return { ok: false as const, error: auth.error };
+  const name = instanceName.trim();
+  if (!name) return { ok: false as const, error: "اسم الـ Instance مطلوب" };
+  const { evolutionCreateInstance } = await import("@/lib/evolution/client");
+  const res = await evolutionCreateInstance(name);
+  if (res.ok) {
+    const admin = createAdminClient();
+    await admin
+      .from("settings")
+      .update({
+        evolution_instance: name,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", 1);
+    revalidatePath("/admin/settings");
+  }
+  return res;
 }
 
 export async function adminCreateBooking(form: {
@@ -214,12 +630,16 @@ export async function adminCreateBooking(form: {
   notes?: string;
 }) {
   const supabase = await requireAdmin();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   const code = Math.random().toString(36).slice(2, 10).toUpperCase();
   const { error } = await supabase.from("bookings").insert({
     ...form,
     notes: form.notes || null,
     status: "approved",
     tracking_code: code,
+    created_by: user?.id ?? null,
   });
   if (error) {
     if (error.code === "23P01") {
@@ -229,5 +649,294 @@ export async function adminCreateBooking(form: {
   }
   revalidatePath("/admin/calendar");
   revalidatePath("/book");
+  return { ok: true as const };
+}
+
+export async function upsertServant(form: {
+  id?: string;
+  full_name: string;
+  email: string;
+  phone: string;
+  role: AppRole;
+  is_active: boolean;
+  password?: string;
+}) {
+  await requireAdmin();
+  const admin = createAdminClient();
+  const email = form.email.trim().toLowerCase();
+  const full_name = form.full_name.trim();
+  const phone = form.phone.replace(/\D/g, "");
+
+  if (full_name.length < 2) {
+    return { ok: false as const, error: "الاسم مطلوب" };
+  }
+  if (!email.includes("@")) {
+    return { ok: false as const, error: "البريد غير صحيح" };
+  }
+  if (phone.length < 10) {
+    return { ok: false as const, error: "رقم التليفون غير صحيح" };
+  }
+
+  if (form.id) {
+    const { error: profileError } = await admin
+      .from("profiles")
+      .update({
+        full_name,
+        phone,
+        email,
+        role: form.role,
+        is_active: form.is_active,
+      })
+      .eq("id", form.id);
+    if (profileError) return { ok: false as const, error: profileError.message };
+
+    const authUpdate: {
+      email?: string;
+      password?: string;
+      user_metadata?: object;
+    } = {
+      email,
+      user_metadata: { full_name },
+    };
+    if (form.password && form.password.length >= 6) {
+      authUpdate.password = form.password;
+    }
+    const { error: authError } = await admin.auth.admin.updateUserById(
+      form.id,
+      authUpdate
+    );
+    if (authError) return { ok: false as const, error: authError.message };
+  } else {
+    if (!form.password || form.password.length < 6) {
+      return {
+        ok: false as const,
+        error: "كلمة المرور مطلوبة (6 أحرف على الأقل)",
+      };
+    }
+    const { data: created, error: createError } =
+      await admin.auth.admin.createUser({
+        email,
+        password: form.password,
+        email_confirm: true,
+        user_metadata: { full_name },
+      });
+    if (createError || !created.user) {
+      return {
+        ok: false as const,
+        error: createError?.message ?? "تعذر إنشاء الحساب",
+      };
+    }
+    const { error: profileError } = await admin.from("profiles").upsert({
+      id: created.user.id,
+      full_name,
+      phone,
+      email,
+      role: form.role,
+      is_active: form.is_active,
+      deleted_at: null,
+    });
+    if (profileError) {
+      await admin.auth.admin.deleteUser(created.user.id);
+      return { ok: false as const, error: profileError.message };
+    }
+  }
+
+  revalidatePath("/admin/servants");
+  return { ok: true as const };
+}
+
+export async function softDeleteServant(id: string) {
+  const supabase = await requireAdmin();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (user?.id === id) {
+    return { ok: false as const, error: "لا يمكن حذف حسابك الحالي" };
+  }
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from("profiles")
+    .update({
+      deleted_at: new Date().toISOString(),
+      is_active: false,
+    })
+    .eq("id", id);
+  if (error) return { ok: false as const, error: error.message };
+  revalidatePath("/admin/servants");
+  return { ok: true as const };
+}
+
+export async function restoreServant(id: string) {
+  await requireAdmin();
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from("profiles")
+    .update({ deleted_at: null, is_active: true })
+    .eq("id", id);
+  if (error) return { ok: false as const, error: error.message };
+  revalidatePath("/admin/servants");
+  return { ok: true as const };
+}
+
+export async function getRolePermissionsAction(role: AppRole) {
+  const auth = await requirePermission("manage_permissions");
+  if (!auth.ok) return { ok: false as const, error: auth.error, permissions: [] as string[] };
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("role_permissions")
+    .select("permission")
+    .eq("role", role);
+  if (error) return { ok: false as const, error: error.message, permissions: [] };
+  return {
+    ok: true as const,
+    permissions: (data ?? []).map((r) => r.permission),
+  };
+}
+
+export async function saveRolePermissionsAction(
+  role: AppRole,
+  permissions: string[]
+) {
+  const auth = await requirePermission("manage_permissions");
+  if (!auth.ok) return { ok: false as const, error: auth.error };
+
+  const allowed = new Set(PERMISSION_KEYS);
+  const next = Array.from(
+    new Set(permissions.filter((p) => allowed.has(p as (typeof PERMISSION_KEYS)[number])))
+  );
+
+  if (role === "admin" && !next.includes("manage_permissions")) {
+    next.push("manage_permissions");
+  }
+  if (next.some((p) => p !== "book" && p !== "view_own_bookings") && !next.includes("access_admin")) {
+    // panel features need access_admin
+    const panelKeys = next.filter(
+      (p) => p !== "book" && p !== "view_own_bookings"
+    );
+    if (panelKeys.length) next.push("access_admin");
+  }
+
+  const admin = createAdminClient();
+  const { error: delError } = await admin
+    .from("role_permissions")
+    .delete()
+    .eq("role", role);
+  if (delError) return { ok: false as const, error: delError.message };
+
+  if (next.length) {
+    const { error } = await admin.from("role_permissions").insert(
+      next.map((permission) => ({ role, permission }))
+    );
+    if (error) return { ok: false as const, error: error.message };
+  }
+
+  revalidatePath("/admin/permissions");
+  revalidatePath("/admin/servants");
+  return { ok: true as const };
+}
+
+export async function getProfilePermissionsState(profileId: string) {
+  const auth = await requirePermission("manage_permissions");
+  if (!auth.ok) {
+    const fallback = await requirePermission("manage_servants");
+    if (!fallback.ok) {
+      return {
+        ok: false as const,
+        error: fallback.error,
+        custom: false,
+        permissions: [] as string[],
+      };
+    }
+  }
+
+  const admin = createAdminClient();
+  const { data: profile } = await admin
+    .from("profiles")
+    .select("role")
+    .eq("id", profileId)
+    .maybeSingle();
+  const role = (profile?.role as AppRole) ?? "servant";
+
+  const { data: rows } = await admin
+    .from("profile_permissions")
+    .select("permission, granted")
+    .eq("profile_id", profileId);
+
+  const list = rows ?? [];
+  const custom = list.some((r) => r.permission === CUSTOM_FLAG);
+
+  if (custom) {
+    return {
+      ok: true as const,
+      custom: true,
+      permissions: list
+        .filter((r) => r.permission !== CUSTOM_FLAG && r.granted)
+        .map((r) => r.permission),
+      role,
+    };
+  }
+
+  const { data: rolePerms } = await admin
+    .from("role_permissions")
+    .select("permission")
+    .eq("role", role);
+
+  return {
+    ok: true as const,
+    custom: false,
+    permissions: (rolePerms ?? []).map((r) => r.permission),
+    role,
+  };
+}
+
+export async function saveProfileCustomPermissions(
+  profileId: string,
+  custom: boolean,
+  permissions: string[]
+) {
+  const auth = await requirePermission("manage_permissions");
+  if (!auth.ok) {
+    const fallback = await requirePermission("manage_servants");
+    if (!fallback.ok) return { ok: false as const, error: fallback.error };
+  }
+
+  const admin = createAdminClient();
+  const { error: clearError } = await admin
+    .from("profile_permissions")
+    .delete()
+    .eq("profile_id", profileId);
+  if (clearError) return { ok: false as const, error: clearError.message };
+
+  if (!custom) {
+    revalidatePath("/admin/servants");
+    revalidatePath("/admin/permissions");
+    return { ok: true as const };
+  }
+
+  const allowed = new Set(PERMISSION_KEYS);
+  let next = Array.from(
+    new Set(permissions.filter((p) => allowed.has(p as (typeof PERMISSION_KEYS)[number])))
+  );
+  if (
+    next.some((p) => p !== "book" && p !== "view_own_bookings") &&
+    !next.includes("access_admin")
+  ) {
+    next.push("access_admin");
+  }
+
+  const rows = [
+    { profile_id: profileId, permission: CUSTOM_FLAG, granted: true },
+    ...PERMISSION_KEYS.map((permission) => ({
+      profile_id: profileId,
+      permission,
+      granted: next.includes(permission),
+    })),
+  ];
+
+  const { error } = await admin.from("profile_permissions").insert(rows);
+  if (error) return { ok: false as const, error: error.message };
+
+  revalidatePath("/admin/servants");
+  revalidatePath("/admin/permissions");
   return { ok: true as const };
 }

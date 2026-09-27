@@ -10,7 +10,7 @@ export default async function RoomsPage() {
       <div>
         <h1 className="text-2xl font-bold">الأماكن</h1>
         <p className="text-sm text-muted-foreground">
-          إضافة وتعديل الأماكن (ديناميكية بالكامل)
+          جدول قابل للبحث والفلترة مع ترتيب بالسحب والإفلات وحذف ناعم
         </p>
       </div>
       <RoomsManager rooms={rooms} />
