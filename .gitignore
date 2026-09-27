@@ -34,9 +34,14 @@ yarn-error.log*
 .env*
 !.env.example
 
+# supabase cli temp
+supabase/.temp/
+
 # vercel
 .vercel
 
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+.vercel

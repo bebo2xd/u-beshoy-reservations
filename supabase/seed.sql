@@ -1,6 +1,14 @@
 -- Seed rooms + default weekly schedule from the church timetable
 -- day_of_week: 0=Sun 1=Mon 2=Tue 3=Wed 4=Thu 5=Fri 6=Sat
 -- Hours use 24h (11=11ص, 17=5م, 21=9م)
+-- IMPORTANT: run supabase/migrations/0001_init.sql FIRST (or use setup_all.sql)
+
+DO $$
+BEGIN
+  IF to_regclass('public.schedule_exceptions') IS NULL THEN
+    RAISE EXCEPTION 'Tables missing. Run supabase/migrations/0001_init.sql first, or use supabase/setup_all.sql';
+  END IF;
+END $$;
 
 TRUNCATE public.schedule_exceptions, public.blackouts, public.bookings,
   public.recurring_schedules, public.rooms RESTART IDENTITY CASCADE;
