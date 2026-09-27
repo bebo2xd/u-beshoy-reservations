@@ -1,26 +1,155 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Radix Sand */
+  --sand-1: #fdfdfc;
+  --sand-2: #f9f9f8;
+  --sand-3: #f1f0ef;
+  --sand-4: #e9e8e6;
+  --sand-5: #e2e1de;
+  --sand-6: #dad9d6;
+  --sand-7: #cfceca;
+  --sand-8: #bcbbb5;
+  --sand-9: #8d8d86;
+  --sand-10: #82827c;
+  --sand-11: #63635e;
+  --sand-12: #21201c;
+
+  /* Radix Teal */
+  --teal-3: #e7f9f5;
+  --teal-4: #d9f3ee;
+  --teal-5: #c7ebe5;
+  --teal-6: #afdfd7;
+  --teal-7: #8dcec3;
+  --teal-8: #53b9ab;
+  --teal-9: #12a594;
+  --teal-10: #0d9b8a;
+  --teal-11: #008573;
+  --teal-12: #0d3d38;
+
+  /* Radix Amber */
+  --amber-3: #fff7c2;
+  --amber-4: #ffef9c;
+  --amber-5: #ffe56e;
+  --amber-9: #ffb224;
+  --amber-10: #ffa01c;
+  --amber-11: #ad5700;
+  --amber-12: #4e2009;
+
+  /* Radix Tomato */
+  --tomato-3: #fff0ee;
+  --tomato-4: #ffe6e2;
+  --tomato-9: #e54d2e;
+  --tomato-10: #dd4425;
+  --tomato-11: #d13415;
+
+  /* Radix Green */
+  --green-3: #e9f6ee;
+  --green-9: #30a46c;
+  --green-11: #18794e;
+
+  --background: var(--sand-1);
+  --foreground: var(--sand-12);
+  --card: #ffffff;
+  --card-foreground: var(--sand-12);
+  --popover: #ffffff;
+  --popover-foreground: var(--sand-12);
+  --primary: var(--teal-9);
+  --primary-foreground: #ffffff;
+  --secondary: var(--sand-3);
+  --secondary-foreground: var(--sand-12);
+  --muted: var(--sand-3);
+  --muted-foreground: var(--sand-11);
+  --accent: var(--teal-3);
+  --accent-foreground: var(--teal-12);
+  --destructive: var(--tomato-9);
+  --destructive-foreground: #ffffff;
+  --border: var(--sand-5);
+  --input: var(--sand-5);
+  --ring: var(--teal-8);
+  --pending: var(--amber-9);
+  --pending-foreground: var(--amber-12);
+  --radius: 0.75rem;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-pending: var(--pending);
+  --color-pending-foreground: var(--pending-foreground);
+  --color-sand-1: var(--sand-1);
+  --color-sand-2: var(--sand-2);
+  --color-sand-3: var(--sand-3);
+  --color-sand-4: var(--sand-4);
+  --color-sand-5: var(--sand-5);
+  --color-sand-8: var(--sand-8);
+  --color-sand-11: var(--sand-11);
+  --color-sand-12: var(--sand-12);
+  --color-teal-3: var(--teal-3);
+  --color-teal-9: var(--teal-9);
+  --color-teal-11: var(--teal-11);
+  --color-amber-3: var(--amber-3);
+  --color-amber-9: var(--amber-9);
+  --color-amber-11: var(--amber-11);
+  --color-tomato-3: var(--tomato-3);
+  --color-tomato-9: var(--tomato-9);
+  --color-green-3: var(--green-3);
+  --color-green-9: var(--green-9);
+  --color-green-11: var(--green-11);
+  --font-sans: var(--font-arabic);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  border-color: var(--border);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-arabic), "Segoe UI", Tahoma, sans-serif;
+}
+
+.slot-striped {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    var(--sand-4),
+    var(--sand-4) 4px,
+    var(--sand-3) 4px,
+    var(--sand-3) 8px
+  );
+}
+
+/* Custom scrollbar */
+.scrollbar-thin::-webkit-scrollbar {
+  height: 8px;
+  width: 8px;
+}
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: var(--sand-2);
+  border-radius: 4px;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: var(--sand-8);
+  border-radius: 4px;
 }

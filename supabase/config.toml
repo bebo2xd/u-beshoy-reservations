@@ -1,0 +1,8 @@
+# Minimal Supabase config marker for this project.
+# Apply SQL manually via the Supabase Dashboard SQL Editor:
+#   1. supabase/migrations/0001_init.sql
+#   2. supabase/seed.sql
+#
+# Or use the Supabase CLI:
+#   supabase db push
+#   supabase db reset   (applies migrations + seed when linked)
