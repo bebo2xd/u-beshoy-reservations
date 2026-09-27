@@ -17,6 +17,9 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="ar" dir="rtl" className={`${arabic.variable} h-full antialiased`}>
+      <head>
+        <meta charSet="utf-8" />
+      </head>
       <body className="min-h-full flex flex-col bg-background font-sans text-foreground">
         {children}
         <Toaster position="top-center" dir="rtl" richColors closeButton />
