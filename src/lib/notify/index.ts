@@ -6,11 +6,8 @@ import {
 } from "./whatsapp";
 import { buildDecisionWhatsAppText } from "@/lib/whatsapp-link";
 import { getNotificationPrefs } from "@/lib/evolution/client";
-import {
-  getActiveAdminUserIds,
-  sendOneSignalPush,
-  sendOneSignalPushToRole,
-} from "./onesignal";
+import { getNotifyAdminRecipients } from "./recipients";
+import { sendOneSignalPush, sendOneSignalPushToRole } from "./onesignal";
 
 export async function notifyNewBooking(payload: {
   id: string;
@@ -45,10 +42,12 @@ export async function notifyNewBooking(payload: {
   // Push first — don't let email/whatsapp delays block it.
   if (prefs.new_booking_push_admin !== false) {
     try {
-      const adminIds = await getActiveAdminUserIds();
+      const { recipients, restricted } = await getNotifyAdminRecipients();
+      const adminIds = recipients.map((r) => r.id);
       console.info("Push new booking to admins", {
         bookingId: payload.id,
         adminIds,
+        restricted,
       });
 
       let result: { ok: boolean; error?: string; id?: string };
@@ -57,8 +56,8 @@ export async function notifyNewBooking(payload: {
           ...pushContent,
           externalIds: adminIds,
         });
-        // Only fall back to role tag if alias targeting failed.
-        if (!result.ok) {
+        // Role-tag fallback only when notifying all admins (not a subset).
+        if (!result.ok && !restricted) {
           console.warn("Alias push failed, falling back to role tag", result);
           result = await sendOneSignalPushToRole("admin", pushContent);
         }

@@ -3,14 +3,30 @@ import {
   evolutionSendText,
   getEvolutionConfig,
 } from "@/lib/evolution/client";
+import { getNotifyAdminRecipients } from "./recipients";
 
 export async function notifyAdminNewBookingWhatsApp(
   text: string
 ): Promise<boolean> {
-  const config = await getEvolutionConfig();
-  if (!config?.adminWhatsapp) return false;
-  const res = await evolutionSendText(config.adminWhatsapp, text);
-  return res.ok;
+  const { recipients } = await getNotifyAdminRecipients();
+  const phones = [
+    ...new Set(
+      recipients
+        .map((r) => formatPhone(r.phone))
+        .filter((p) => p.length >= 10)
+    ),
+  ];
+
+  if (phones.length === 0) {
+    const config = await getEvolutionConfig();
+    if (!config?.adminWhatsapp) return false;
+    phones.push(formatPhone(config.adminWhatsapp));
+  }
+
+  const results = await Promise.all(
+    phones.map((phone) => evolutionSendText(phone, text))
+  );
+  return results.some((r) => r.ok);
 }
 
 export async function notifyRequesterWhatsApp(
@@ -47,4 +63,3 @@ export {
   buildDecisionWhatsAppText,
   buildWhatsAppClickToChatUrl,
 } from "@/lib/whatsapp-link";
-

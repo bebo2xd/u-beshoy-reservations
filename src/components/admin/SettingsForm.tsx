@@ -4,24 +4,28 @@ import { useCallback, useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   Bell,
-  CalendarPlus,
   CheckCircle2,
-  ClipboardCheck,
+  ChevronDown,
   Loader2,
   Mail,
   MessageCircle,
   QrCode,
   RefreshCw,
   Save,
+  Search,
   Settings2,
+  Smartphone,
+  Users,
   Wifi,
   WifiOff,
-  XCircle,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 import type { AppSettings } from "@/lib/types";
 import type { NotificationPrefs } from "@/lib/notify/prefs";
 import { mergeNotificationPrefs } from "@/lib/notify/prefs";
+import type { NotifyAdminRecipient } from "@/lib/notify/recipients";
 import {
   evolutionCreateInstanceAction,
   evolutionLogoutAction,
@@ -40,6 +44,7 @@ import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -57,13 +62,26 @@ export type SettingsFormProps = {
     has_evolution_api_key?: boolean;
     has_smtp_password?: boolean;
   };
+  admins?: NotifyAdminRecipient[];
 };
+
+function adminInitials(name: string) {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "?";
+  if (parts.length === 1) return parts[0].slice(0, 2);
+  return `${parts[0][0] ?? ""}${parts[1][0] ?? ""}`;
+}
 
 const NOTIFY_GROUPS: {
   id: string;
   title: string;
   description: string;
   icon: typeof Bell;
+  /** Tailwind classes for the channel accent */
+  accent: string;
+  accentSoft: string;
+  border: string;
+  dot: string;
   items: {
     key: keyof NotificationPrefs;
     label: string;
@@ -71,79 +89,83 @@ const NOTIFY_GROUPS: {
   }[];
 }[] = [
   {
-    id: "new",
-    title: "طلب حجز جديد",
-    description: "لما خادم يقدّم طلب وينتظر الموافقة",
-    icon: ClipboardCheck,
+    id: "whatsapp",
+    title: "واتساب",
+    description: "رسائل عبر Evolution API",
+    icon: MessageCircle,
+    accent: "text-green-11",
+    accentSoft: "bg-green-3 text-green-11",
+    border: "border-green-9/35",
+    dot: "bg-green-9",
     items: [
       {
         key: "new_booking_whatsapp_admin",
-        label: "واتساب للأدمن",
-        hint: "يرسل لرقم الأدمن عبر Evolution",
+        label: "طلب جديد → الأدمن",
+        hint: "لما ييجي طلب حجز جديد",
       },
-      {
-        key: "new_booking_push_admin",
-        label: "إشعار Push للأدمن",
-        hint: "يفتح صفحة الموافقة داخل تطبيق الأندرويد",
-      },
-      {
-        key: "new_booking_email",
-        label: "إيميل للأدمن",
-        hint: "يتطلب إعداد SMTP من تاب الإيميل",
-      },
-    ],
-  },
-  {
-    id: "decision",
-    title: "الموافقة أو الرفض",
-    description: "لما الأدمن يبتّ في طلب معلّق",
-    icon: CheckCircle2,
-    items: [
       {
         key: "decision_whatsapp_requester",
-        label: "واتساب لمقدم الطلب",
+        label: "موافقة / رفض → مقدم الطلب",
         hint: "يبلغ الخادم بنتيجة الطلب",
       },
       {
-        key: "decision_push_requester",
-        label: "إشعار Push لمقدم الطلب",
-        hint: "يبلغ الخادم على تطبيق الأندرويد",
-      },
-      {
         key: "decision_whatsapp_admin",
-        label: "نسخة واتساب للأدمن",
-        hint: "تأكيد للأدمن بعد البت في الطلب",
+        label: "موافقة / رفض → الأدمن",
+        hint: "نسخة تأكيد للأدمن بعد البت",
       },
-    ],
-  },
-  {
-    id: "cancel",
-    title: "إلغاء طلب",
-    description: "لما يتلغي حجز معلّق أو مقبول",
-    icon: XCircle,
-    items: [
       {
         key: "cancel_whatsapp_requester",
-        label: "واتساب لمقدم الطلب",
-        hint: "إخطار بالإلغاء",
+        label: "إلغاء → مقدم الطلب",
+        hint: "لما يتلغي حجز",
       },
       {
         key: "cancel_whatsapp_admin",
-        label: "واتساب للأدمن",
+        label: "إلغاء → الأدمن",
         hint: "تنبيه الأدمن بالإلغاء",
+      },
+      {
+        key: "admin_booking_whatsapp",
+        label: "حجز يدوي من التقويم",
+        hint: "تأكيد لصاحب الحجز عند الإضافة من الأدمن",
       },
     ],
   },
   {
-    id: "manual",
-    title: "حجز يدوي من التقويم",
-    description: "الحجوزات اللي بيعملها الأدمن مباشرة",
-    icon: CalendarPlus,
+    id: "push",
+    title: "إشعارات Push",
+    description: "تنبيهات تطبيق الأندرويد (OneSignal)",
+    icon: Smartphone,
+    accent: "text-teal-11",
+    accentSoft: "bg-teal-3 text-teal-11",
+    border: "border-teal-9/35",
+    dot: "bg-teal-9",
     items: [
       {
-        key: "admin_booking_whatsapp",
-        label: "واتساب لصاحب الحجز",
-        hint: "رسالة تأكيد عند إضافة حجز من التقويم",
+        key: "new_booking_push_admin",
+        label: "طلب جديد → الأدمن",
+        hint: "يفتح صفحة الموافقة داخل التطبيق",
+      },
+      {
+        key: "decision_push_requester",
+        label: "موافقة / رفض → مقدم الطلب",
+        hint: "يبلغ الخادم بالنتيجة على التطبيق",
+      },
+    ],
+  },
+  {
+    id: "email",
+    title: "إيميل",
+    description: "بريد عبر SMTP — اضبطه من تاب الإيميل",
+    icon: Mail,
+    accent: "text-amber-11",
+    accentSoft: "bg-amber-3 text-amber-11",
+    border: "border-amber-9/35",
+    dot: "bg-amber-9",
+    items: [
+      {
+        key: "new_booking_email",
+        label: "طلب جديد → الأدمن",
+        hint: "",
       },
     ],
   },
@@ -163,7 +185,10 @@ function stateBadge(state: string) {
   return <Badge variant="pending">{state}</Badge>;
 }
 
-export function SettingsForm({ settings }: SettingsFormProps) {
+export function SettingsForm({
+  settings,
+  admins = [],
+}: SettingsFormProps) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [general, setGeneral] = useState({
@@ -178,6 +203,13 @@ export function SettingsForm({ settings }: SettingsFormProps) {
   const [prefs, setPrefs] = useState<NotificationPrefs>(
     mergeNotificationPrefs(settings.notification_prefs)
   );
+  const [notifyAdminIds, setNotifyAdminIds] = useState<string[]>(() => {
+    const stored = settings.notify_admin_ids;
+    if (stored && stored.length > 0) return stored;
+    return admins.map((a) => a.id);
+  });
+  const [adminsOpen, setAdminsOpen] = useState(false);
+  const [adminSearch, setAdminSearch] = useState("");
   const [evo, setEvo] = useState({
     evolution_url: settings.evolution_url ?? "",
     evolution_api_key: "",
@@ -199,6 +231,41 @@ export function SettingsForm({ settings }: SettingsFormProps) {
   const [qr, setQr] = useState<string | null>(null);
   const [polling, setPolling] = useState(false);
   const [testPhone, setTestPhone] = useState(settings.admin_whatsapp ?? "");
+
+  const emailConfigured = Boolean(
+    smtp.smtp_host.trim() &&
+      smtp.smtp_user.trim() &&
+      (hasSmtpPass || smtp.smtp_password.trim()) &&
+      smtp.admin_email.trim() &&
+      (smtp.smtp_from.trim() || smtp.smtp_user.trim())
+  );
+
+  const allAdminsSelected =
+    admins.length > 0 &&
+    admins.every((a) => notifyAdminIds.includes(a.id));
+  const notifySelectionLabel = allAdminsSelected
+    ? "كل الأدمنز"
+    : notifyAdminIds.length === 0
+      ? "مفيش تحديد"
+      : `${notifyAdminIds.length} / ${admins.length}`;
+
+  const selectedAdmins = admins.filter((a) => notifyAdminIds.includes(a.id));
+  const adminQuery = adminSearch.trim().toLowerCase();
+  const filteredAdmins = adminQuery
+    ? admins.filter((a) => {
+        const hay = [a.full_name, a.phone, a.email ?? ""]
+          .join(" ")
+          .toLowerCase();
+        return hay.includes(adminQuery);
+      })
+    : admins;
+
+  const toggleNotifyAdmin = (id: string, checked: boolean) => {
+    setNotifyAdminIds((prev) => {
+      if (checked) return prev.includes(id) ? prev : [...prev, id];
+      return prev.filter((x) => x !== id);
+    });
+  };
 
   const refreshStatus = useCallback(async () => {
     const res = await evolutionStatusAction();
@@ -388,38 +455,255 @@ export function SettingsForm({ settings }: SettingsFormProps) {
           <div>
             <h2 className="text-lg font-bold">التنبيهات</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              اختار إزاي النظام يبلّغ الأدمن والخدام في كل مرحلة
+              مقسّمة حسب القناة — فعّل اللي محتاجه بس
             </p>
           </div>
 
+          <Card className="overflow-hidden border border-border">
+            <button
+              type="button"
+              onClick={() => setAdminsOpen((o) => !o)}
+              className="flex w-full items-start gap-3 p-5 text-start transition-colors hover:bg-sand-2/60"
+              aria-expanded={adminsOpen}
+            >
+              <div className="mt-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-secondary text-muted-foreground">
+                <Users className="h-5 w-5" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <CardTitle className="text-base">
+                    مين يستلم إشعارات الأدمن؟
+                  </CardTitle>
+                  <Badge variant="muted" className="tabular-nums">
+                    {notifySelectionLabel}
+                  </Badge>
+                </div>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Push · واتساب · إيميل — لو الكل متعلم، الأدمن الجديد هيستلم
+                  تلقائي
+                </p>
+                {!adminsOpen && selectedAdmins.length > 0 ? (
+                  <div className="mt-3 flex flex-wrap gap-1.5">
+                    {(allAdminsSelected
+                      ? [{ id: "__all", full_name: "كل الأدمنز" }]
+                      : selectedAdmins.slice(0, 4)
+                    ).map((a) => (
+                      <span
+                        key={a.id}
+                        className="inline-flex max-w-[160px] items-center gap-1.5 rounded-full bg-teal-3 px-2.5 py-1 text-xs font-medium text-teal-11"
+                      >
+                        <span className="truncate">
+                          {a.full_name || "بدون اسم"}
+                        </span>
+                      </span>
+                    ))}
+                    {!allAdminsSelected && selectedAdmins.length > 4 ? (
+                      <span className="inline-flex items-center rounded-full bg-secondary px-2.5 py-1 text-xs font-medium text-muted-foreground">
+                        +{selectedAdmins.length - 4}
+                      </span>
+                    ) : null}
+                  </div>
+                ) : null}
+                {!adminsOpen && selectedAdmins.length === 0 ? (
+                  <p className="mt-2 text-sm text-amber-11">
+                    مفيش تحديد — هيتبعت للكل عند الحفظ
+                  </p>
+                ) : null}
+              </div>
+              <ChevronDown
+                className={cn(
+                  "mt-1 h-5 w-5 shrink-0 text-muted-foreground transition-transform duration-200",
+                  adminsOpen && "rotate-180"
+                )}
+              />
+            </button>
+
+            <div
+              className={cn(
+                "grid transition-[grid-template-rows] duration-200 ease-out",
+                adminsOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
+              )}
+            >
+              <div className="overflow-hidden">
+                <div className="space-y-3 border-t border-border px-5 pb-5 pt-4">
+                  {admins.length === 0 ? (
+                    <p className="rounded-xl border border-dashed border-border px-3.5 py-4 text-sm text-muted-foreground">
+                      مفيش أدمنز نشطين حالياً.
+                    </p>
+                  ) : (
+                    <>
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                        <div className="relative min-w-0 flex-1">
+                          <Search className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                          <Input
+                            value={adminSearch}
+                            onChange={(e) => setAdminSearch(e.target.value)}
+                            placeholder="بحث بالاسم أو الإيميل أو التليفون..."
+                            className="pr-10"
+                          />
+                          {adminSearch ? (
+                            <button
+                              type="button"
+                              className="absolute left-2.5 top-1/2 -translate-y-1/2 rounded-md p-1 text-muted-foreground hover:bg-secondary hover:text-foreground"
+                              onClick={() => setAdminSearch("")}
+                              aria-label="مسح البحث"
+                            >
+                              <X className="h-3.5 w-3.5" />
+                            </button>
+                          ) : null}
+                        </div>
+                        <div className="flex shrink-0 gap-2">
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={() =>
+                              setNotifyAdminIds(admins.map((a) => a.id))
+                            }
+                          >
+                            الكل
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => setNotifyAdminIds([])}
+                          >
+                            مسح
+                          </Button>
+                        </div>
+                      </div>
+
+                      <div className="overflow-hidden rounded-xl border border-border/80">
+                        <div className="max-h-64 space-y-0 overflow-y-auto overscroll-contain divide-y divide-border/70 sm:max-h-80">
+                          {filteredAdmins.length === 0 ? (
+                            <p className="px-3.5 py-8 text-center text-sm text-muted-foreground">
+                              مفيش نتائج لـ «{adminSearch.trim()}»
+                            </p>
+                          ) : (
+                            filteredAdmins.map((admin) => {
+                              const checked = notifyAdminIds.includes(
+                                admin.id
+                              );
+                              return (
+                                <label
+                                  key={admin.id}
+                                  className={cn(
+                                    "flex cursor-pointer items-center gap-3 px-3.5 py-3 transition-colors hover:bg-sand-2/80",
+                                    checked && "bg-teal-3/40"
+                                  )}
+                                >
+                                  <Checkbox
+                                    checked={checked}
+                                    onCheckedChange={(v) =>
+                                      toggleNotifyAdmin(admin.id, v === true)
+                                    }
+                                  />
+                                  <span
+                                    className={cn(
+                                      "flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold uppercase",
+                                      checked
+                                        ? "bg-teal-9 text-white"
+                                        : "bg-secondary text-muted-foreground"
+                                    )}
+                                    aria-hidden
+                                  >
+                                    {adminInitials(admin.full_name || "?")}
+                                  </span>
+                                  <div className="min-w-0 flex-1">
+                                    <p className="font-semibold leading-snug">
+                                      {admin.full_name || "بدون اسم"}
+                                    </p>
+                                    <p
+                                      className="mt-0.5 truncate text-sm text-muted-foreground"
+                                      dir="ltr"
+                                    >
+                                      {[admin.phone, admin.email]
+                                        .filter(Boolean)
+                                        .join(" · ") ||
+                                        "مفيش تليفون أو إيميل على البروفايل"}
+                                    </p>
+                                  </div>
+                                  {checked ? (
+                                    <CheckCircle2 className="h-4 w-4 shrink-0 text-teal-9" />
+                                  ) : null}
+                                </label>
+                              );
+                            })
+                          )}
+                        </div>
+                        <div className="flex items-center justify-between gap-2 border-t border-border/80 bg-secondary/40 px-3.5 py-2 text-xs text-muted-foreground">
+                          <span>
+                            ظاهر {filteredAdmins.length} من {admins.length}
+                          </span>
+                          <span className="tabular-nums">
+                            محدد {notifyAdminIds.length}
+                          </span>
+                        </div>
+                      </div>
+
+                      {notifyAdminIds.length === 0 ? (
+                        <p className="text-sm text-amber-11">
+                          لو حفظت من غير تحديد، هيتبعت لكل الأدمنز النشطين.
+                        </p>
+                      ) : null}
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+          </Card>
+
           {NOTIFY_GROUPS.map((group) => {
             const Icon = group.icon;
+            const enabledCount = group.items.filter((i) => prefs[i.key]).length;
             return (
-              <Card key={group.id}>
+              <Card key={group.id} className={`overflow-hidden border ${group.border}`}>
                 <CardHeader className="pb-3">
-                  <div className="flex items-start gap-3">
-                    <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-teal-3 text-teal-11">
-                      <Icon className="h-5 w-5" />
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-start gap-3">
+                      <div
+                        className={`mt-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ${group.accentSoft}`}
+                      >
+                        <Icon className="h-5 w-5" />
+                      </div>
+                      <div className="min-w-0">
+                        <CardTitle className={`text-base ${group.accent}`}>
+                          {group.title}
+                        </CardTitle>
+                        <p className="mt-1 text-sm text-muted-foreground">
+                          {group.description}
+                        </p>
+                      </div>
                     </div>
-                    <div className="min-w-0">
-                      <CardTitle className="text-base">{group.title}</CardTitle>
-                      <p className="mt-1 text-sm text-muted-foreground">
-                        {group.description}
-                      </p>
-                    </div>
+                    <Badge variant="muted" className="shrink-0 tabular-nums">
+                      {enabledCount}/{group.items.length}
+                    </Badge>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-2 pt-0">
                   {group.items.map((item) => (
                     <label
                       key={item.key}
-                      className="flex cursor-pointer items-center justify-between gap-3 rounded-xl border border-border/80 bg-sand-2/50 px-3.5 py-3 transition-colors hover:bg-sand-2"
+                      className="flex cursor-pointer items-center justify-between gap-3 rounded-xl border border-border/70 bg-card px-3.5 py-3 transition-colors hover:bg-sand-2/80"
                     >
-                      <div className="min-w-0">
-                        <p className="font-semibold leading-snug">{item.label}</p>
-                        <p className="mt-0.5 text-sm text-muted-foreground">
-                          {item.hint}
-                        </p>
+                      <div className="flex min-w-0 items-start gap-2.5">
+                        <span
+                          className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${group.dot}`}
+                          aria-hidden
+                        />
+                        <div className="min-w-0">
+                          <p className="font-semibold leading-snug">
+                            {item.label}
+                          </p>
+                          <p className="mt-0.5 text-sm text-muted-foreground">
+                            {item.key === "new_booking_email"
+                              ? emailConfigured
+                                ? "SMTP جاهز — هيتبعت لإيميلات الأدمنز المحددين"
+                                : "يتطلب إعداد SMTP من تاب الإيميل"
+                              : item.hint}
+                          </p>
+                        </div>
                       </div>
                       <Switch
                         checked={prefs[item.key]}
@@ -440,7 +724,11 @@ export function SettingsForm({ settings }: SettingsFormProps) {
               disabled={pending}
               onClick={() => {
                 startTransition(async () => {
-                  const res = await updateNotificationPrefsAction(prefs);
+                  const idsToSave = allAdminsSelected ? null : notifyAdminIds;
+                  const res = await updateNotificationPrefsAction(
+                    prefs,
+                    idsToSave
+                  );
                   if (!res.ok) toast.error(res.error);
                   else toast.success("تم حفظ إعدادات التنبيهات");
                 });
@@ -705,10 +993,8 @@ export function SettingsForm({ settings }: SettingsFormProps) {
         <Card>
           <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
             <CardTitle>إعدادات SMTP</CardTitle>
-            <Badge
-              variant={settings.channel_status?.email ? "success" : "muted"}
-            >
-              {settings.channel_status?.email ? "مضبوط" : "غير مضبوط"}
+            <Badge variant={emailConfigured ? "success" : "muted"}>
+              {emailConfigured ? "مضبوط" : "غير مضبوط"}
             </Badge>
           </CardHeader>
           <CardContent className="grid gap-4 sm:grid-cols-2">

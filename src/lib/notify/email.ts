@@ -1,5 +1,6 @@
 import nodemailer from "nodemailer";
 import { getSmtpConfig, type SmtpConfig } from "./smtp";
+import { getNotifyAdminRecipients } from "./recipients";
 
 export async function sendAdminEmail(
   subject: string,
@@ -7,7 +8,25 @@ export async function sendAdminEmail(
 ): Promise<boolean> {
   const cfg = await getSmtpConfig();
   if (!cfg) return false;
-  return sendMail(cfg, cfg.adminEmail, subject, html);
+
+  const recipients = await getNotifyAdminRecipients();
+  const emails = [
+    ...new Set(
+      recipients.recipients
+        .map((r) => r.email?.trim().toLowerCase() || "")
+        .filter(Boolean)
+    ),
+  ];
+
+  if (emails.length === 0 && cfg.adminEmail) {
+    emails.push(cfg.adminEmail);
+  }
+  if (emails.length === 0) return false;
+
+  const results = await Promise.all(
+    emails.map((to) => sendMail(cfg, to, subject, html))
+  );
+  return results.some(Boolean);
 }
 
 async function sendMail(

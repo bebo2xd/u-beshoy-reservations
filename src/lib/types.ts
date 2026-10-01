@@ -110,6 +110,8 @@ export interface AppSettings {
   smtp_password?: string | null;
   smtp_from?: string | null;
   admin_email?: string | null;
+  /** null/empty = all active admins receive admin notifications */
+  notify_admin_ids?: string[] | null;
 }
 
 export interface OccupancyBlock {

@@ -130,7 +130,8 @@ CREATE TABLE public.settings (
   smtp_user text,
   smtp_password text,
   smtp_from text,
-  admin_email text
+  admin_email text,
+  notify_admin_ids uuid[] DEFAULT NULL
 );
 
 INSERT INTO public.settings (id, important_notes) VALUES (

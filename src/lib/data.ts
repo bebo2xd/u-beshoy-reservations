@@ -30,6 +30,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   evolution_api_key: null,
   evolution_instance: null,
   admin_whatsapp: null,
+  notify_admin_ids: null,
 };
 
 export async function getSettings(): Promise<AppSettings> {

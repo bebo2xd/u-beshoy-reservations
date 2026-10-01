@@ -1,6 +1,7 @@
 import { getSettings } from "@/lib/data";
 import { SettingsForm } from "@/components/admin/SettingsForm";
 import { mergeNotificationPrefs } from "@/lib/notify/prefs";
+import { listActiveAdmins } from "@/lib/notify/recipients";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
@@ -20,6 +21,7 @@ export default async function SettingsPage() {
   let smtp_from = settings.smtp_from ?? null;
   let admin_email = settings.admin_email ?? null;
   let has_smtp_password = Boolean(settings.smtp_password);
+  let notify_admin_ids = settings.notify_admin_ids ?? null;
 
   try {
     const admin = createAdminClient();
@@ -37,10 +39,13 @@ export default async function SettingsPage() {
       smtp_from = data.smtp_from;
       admin_email = data.admin_email;
       has_smtp_password = Boolean(data.smtp_password);
+      notify_admin_ids = (data.notify_admin_ids as string[] | null) ?? null;
     }
   } catch {
     /* fallback to getSettings */
   }
+
+  const admins = await listActiveAdmins();
 
   return (
     <div className="space-y-6">
@@ -67,7 +72,9 @@ export default async function SettingsPage() {
           smtp_from,
           admin_email,
           has_smtp_password,
+          notify_admin_ids,
         }}
+        admins={admins}
       />
     </div>
   );

@@ -501,18 +501,31 @@ export async function updateSettings(form: {
 }
 
 export async function updateNotificationPrefsAction(
-  prefs: import("@/lib/notify/prefs").NotificationPrefs
+  prefs: import("@/lib/notify/prefs").NotificationPrefs,
+  notifyAdminIds?: string[] | null
 ) {
   const auth = await requirePermission("manage_settings");
   if (!auth.ok) return { ok: false as const, error: auth.error };
   const admin = createAdminClient();
-  const { error } = await admin
-    .from("settings")
-    .update({
-      notification_prefs: prefs,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", 1);
+
+  const patch: Record<string, unknown> = {
+    notification_prefs: prefs,
+    updated_at: new Date().toISOString(),
+  };
+
+  if (notifyAdminIds !== undefined) {
+    const cleaned = [
+      ...new Set(
+        (notifyAdminIds ?? [])
+          .map((id) => id.trim())
+          .filter(Boolean)
+      ),
+    ];
+    // null = all active admins (including ones added later)
+    patch.notify_admin_ids = cleaned.length > 0 ? cleaned : null;
+  }
+
+  const { error } = await admin.from("settings").update(patch).eq("id", 1);
   if (error) return { ok: false as const, error: error.message };
   revalidatePath("/admin/settings");
   return { ok: true as const };
