@@ -1,5 +1,4 @@
 export type NotificationPrefs = {
-  new_booking_telegram: boolean;
   new_booking_email: boolean;
   new_booking_whatsapp_admin: boolean;
   new_booking_push_admin: boolean;
@@ -12,7 +11,6 @@ export type NotificationPrefs = {
 };
 
 export const DEFAULT_NOTIFICATION_PREFS: NotificationPrefs = {
-  new_booking_telegram: true,
   new_booking_email: true,
   new_booking_whatsapp_admin: true,
   new_booking_push_admin: true,
@@ -25,7 +23,16 @@ export const DEFAULT_NOTIFICATION_PREFS: NotificationPrefs = {
 };
 
 export function mergeNotificationPrefs(
-  raw?: Partial<NotificationPrefs> | null
+  raw?: Partial<NotificationPrefs> | Record<string, unknown> | null
 ): NotificationPrefs {
-  return { ...DEFAULT_NOTIFICATION_PREFS, ...(raw ?? {}) };
+  const merged = { ...DEFAULT_NOTIFICATION_PREFS, ...(raw ?? {}) } as Record<
+    string,
+    unknown
+  >;
+  // Drop legacy telegram flag if present in stored JSON
+  delete merged.new_booking_telegram;
+  return {
+    ...DEFAULT_NOTIFICATION_PREFS,
+    ...(merged as Partial<NotificationPrefs>),
+  };
 }

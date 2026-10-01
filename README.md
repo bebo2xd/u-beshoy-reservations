@@ -1,7 +1,7 @@
 # حجز غرف مبنى الخدمات
 
 نظام حجز مواعيد غرف لمبنى خدمات كنسي — Next.js + Supabase  
-الحجز بالساعة من الجمعة للخميس (11 ص – 9 م)، **للخدام المسجّلين فقط**، مع موافقة الإدارة، ومواعيد ثابتة مسبقة، وتنبيهات Telegram / Email / WhatsApp.
+الحجز بالساعة من الجمعة للخميس (11 ص – 9 م)، **للخدام المسجّلين فقط**، مع موافقة الإدارة، ومواعيد ثابتة مسبقة، وتنبيهات Email / WhatsApp / Push.
 
 ## المميزات
 
@@ -12,7 +12,7 @@
 - منع التعارض (موعد ثابت / حجز / وقت مقفول) على مستوى قاعدة البيانات
 - مواعيد ثابتة من الجدول الكنسي + علامة «يحتاج مراجعة» للأوقات الناقصة
 - اجتماع الخدام الشهري: قفل كل الأماكن من 7 م بضغطة من لوحة التحكم
-- تنبيهات: Telegram (أزرار موافقة/رفض) + Email SMTP + Evolution WhatsApp + OneSignal Push (أندرويد)
+- تنبيهات: Email SMTP + Evolution WhatsApp + OneSignal Push (أندرويد)
 - ألوان Solid فقط (Radix Colors) — بدون gradients
 
 ## تطبيق أندرويد
@@ -66,11 +66,6 @@ npm run dev
 1. ارفع المشروع على GitHub واربطه بـ Vercel
 2. أضف نفس متغيرات `.env.example` في Project Settings → Environment Variables
 3. تأكد من `NEXT_PUBLIC_APP_URL` = رابط الإنتاج
-4. بعد النشر، اضبط Telegram webhook:
-
-```bash
-curl "https://api.telegram.org/bot<TOKEN>/setWebhook?url=https://YOUR_DOMAIN/api/telegram"
-```
 
 ### Keepalive لـ Supabase المجاني
 
@@ -83,15 +78,13 @@ curl "https://api.telegram.org/bot<TOKEN>/setWebhook?url=https://YOUR_DOMAIN/api
 |---------|--------|--------|
 | `NEXT_PUBLIC_SUPABASE_URL` | نعم | رابط المشروع |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | نعم | المفتاح العام |
-| `SUPABASE_SERVICE_ROLE_KEY` | نعم* | لأزرار تيليجرام والعمليات المميزة |
+| `SUPABASE_SERVICE_ROLE_KEY` | نعم* | العمليات المميزة من السيرفر |
 | `NEXT_PUBLIC_APP_URL` | نعم | رابط الموقع |
-| `TELEGRAM_BOT_TOKEN` | لا | بوت التنبيهات |
-| `TELEGRAM_ADMIN_CHAT_ID` | لا | Chat ID الأدمن |
 | `RESEND_API_KEY` / `ADMIN_EMAIL` | لا | تنبيه إيميل |
 | `EVOLUTION_URL` / `EVOLUTION_API_KEY` / `EVOLUTION_INSTANCE` / `ADMIN_WHATSAPP` | لا | واتساب |
 | `CRON_SECRET` | لا | حماية keepalive |
 
-\* مطلوب لتفعيل موافقة/رفض تيليجرام من الأزرار. لوحة التحكم تعمل بجلسة الأدمن بدونها.
+\* مطلوب لبعض العمليات الإدارية على السيرفر (إشعارات، إعدادات حساسة). لوحة التحكم تعمل بجلسة الأدمن بدونها في أغلب الحالات.
 
 ## هيكل مهم
 
@@ -100,7 +93,7 @@ src/app/book              صفحة الحجز العامة
 src/app/r/[code]          متابعة الطلب
 src/app/admin             لوحة التحكم
 src/lib/availability.ts   دمج المشغولية
-src/lib/notify/           Telegram / Email / WhatsApp
+src/lib/notify/           Email / WhatsApp / Push
 supabase/migrations       الجداول والـ RLS والـ RPC
 supabase/seed.sql         الأماكن + الجدول الافتراضي
 ```

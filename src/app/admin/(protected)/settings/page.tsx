@@ -42,20 +42,12 @@ export default async function SettingsPage() {
     /* fallback to getSettings */
   }
 
-  const smtpConfigured = Boolean(
-    (smtp_host && smtp_user && has_smtp_password && admin_email) ||
-      (process.env.SMTP_HOST &&
-        process.env.SMTP_USER &&
-        process.env.SMTP_PASSWORD &&
-        process.env.ADMIN_EMAIL)
-  );
-
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold">الإعدادات</h1>
         <p className="text-sm text-muted-foreground">
-          عام · تنبيهات · واتساب · إيميل SMTP · قنوات أخرى
+          عام · تنبيهات · واتساب · إيميل SMTP
         </p>
       </div>
       <SettingsForm
@@ -75,18 +67,6 @@ export default async function SettingsPage() {
           smtp_from,
           admin_email,
           has_smtp_password,
-          channel_status: {
-            telegram: Boolean(
-              process.env.TELEGRAM_BOT_TOKEN &&
-                process.env.TELEGRAM_ADMIN_CHAT_ID
-            ),
-            email: smtpConfigured,
-            evolution_env_fallback: Boolean(
-              process.env.EVOLUTION_URL &&
-                process.env.EVOLUTION_API_KEY &&
-                process.env.EVOLUTION_INSTANCE
-            ),
-          },
         }}
       />
     </div>

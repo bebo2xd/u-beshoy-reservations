@@ -1,5 +1,4 @@
 import { notifyAdminNewBookingEmail } from "./email";
-import { notifyAdminNewBookingTelegram } from "./telegram";
 import {
   buildNewBookingWhatsAppText,
   notifyAdminNewBookingWhatsApp,
@@ -43,7 +42,7 @@ export async function notifyNewBooking(payload: {
     data: { bookingId: payload.id },
   };
 
-  // Push first — don't let email/telegram/whatsapp delays block it.
+  // Push first — don't let email/whatsapp delays block it.
   if (prefs.new_booking_push_admin !== false) {
     try {
       const adminIds = await getActiveAdminUserIds();
@@ -74,9 +73,6 @@ export async function notifyNewBooking(payload: {
 
   const tasks: Promise<unknown>[] = [];
 
-  if (prefs.new_booking_telegram) {
-    tasks.push(notifyAdminNewBookingTelegram(payload));
-  }
   if (prefs.new_booking_email) {
     tasks.push(
       notifyAdminNewBookingEmail({ ...payload, admin_url: adminUrl })

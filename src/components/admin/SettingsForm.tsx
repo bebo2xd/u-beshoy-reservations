@@ -4,7 +4,9 @@ import { useCallback, useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   Bell,
+  CalendarPlus,
   CheckCircle2,
+  ClipboardCheck,
   Loader2,
   Mail,
   MessageCircle,
@@ -12,9 +14,9 @@ import {
   RefreshCw,
   Save,
   Settings2,
-  Smartphone,
   Wifi,
   WifiOff,
+  XCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 import type { AppSettings } from "@/lib/types";
@@ -54,68 +56,96 @@ export type SettingsFormProps = {
   settings: AppSettings & {
     has_evolution_api_key?: boolean;
     has_smtp_password?: boolean;
-    channel_status?: {
-      telegram: boolean;
-      email: boolean;
-      evolution_env_fallback: boolean;
-    };
   };
 };
 
-const NOTIFY_TOGGLES: {
-  key: keyof NotificationPrefs;
-  label: string;
-  hint: string;
+const NOTIFY_GROUPS: {
+  id: string;
+  title: string;
+  description: string;
+  icon: typeof Bell;
+  items: {
+    key: keyof NotificationPrefs;
+    label: string;
+    hint: string;
+  }[];
 }[] = [
   {
-    key: "new_booking_telegram",
-    label: "طلب جديد → تيليجرام (أدمن)",
-    hint: "رسالة مع أزرار موافقة/رفض",
+    id: "new",
+    title: "طلب حجز جديد",
+    description: "لما خادم يقدّم طلب وينتظر الموافقة",
+    icon: ClipboardCheck,
+    items: [
+      {
+        key: "new_booking_whatsapp_admin",
+        label: "واتساب للأدمن",
+        hint: "يرسل لرقم الأدمن عبر Evolution",
+      },
+      {
+        key: "new_booking_push_admin",
+        label: "إشعار Push للأدمن",
+        hint: "يفتح صفحة الموافقة داخل تطبيق الأندرويد",
+      },
+      {
+        key: "new_booking_email",
+        label: "إيميل للأدمن",
+        hint: "يتطلب إعداد SMTP من تاب الإيميل",
+      },
+    ],
   },
   {
-    key: "new_booking_email",
-    label: "طلب جديد → إيميل (أدمن)",
-    hint: "يتطلب إعداد SMTP من تاب الإيميل",
+    id: "decision",
+    title: "الموافقة أو الرفض",
+    description: "لما الأدمن يبتّ في طلب معلّق",
+    icon: CheckCircle2,
+    items: [
+      {
+        key: "decision_whatsapp_requester",
+        label: "واتساب لمقدم الطلب",
+        hint: "يبلغ الخادم بنتيجة الطلب",
+      },
+      {
+        key: "decision_push_requester",
+        label: "إشعار Push لمقدم الطلب",
+        hint: "يبلغ الخادم على تطبيق الأندرويد",
+      },
+      {
+        key: "decision_whatsapp_admin",
+        label: "نسخة واتساب للأدمن",
+        hint: "تأكيد للأدمن بعد البت في الطلب",
+      },
+    ],
   },
   {
-    key: "new_booking_whatsapp_admin",
-    label: "طلب جديد → واتساب أدمن",
-    hint: "يرسل لرقم الأدمن عبر Evolution",
+    id: "cancel",
+    title: "إلغاء طلب",
+    description: "لما يتلغي حجز معلّق أو مقبول",
+    icon: XCircle,
+    items: [
+      {
+        key: "cancel_whatsapp_requester",
+        label: "واتساب لمقدم الطلب",
+        hint: "إخطار بالإلغاء",
+      },
+      {
+        key: "cancel_whatsapp_admin",
+        label: "واتساب للأدمن",
+        hint: "تنبيه الأدمن بالإلغاء",
+      },
+    ],
   },
   {
-    key: "new_booking_push_admin",
-    label: "طلب جديد → إشعار Push (أدمن)",
-    hint: "يفتح صفحة الموافقة داخل تطبيق الأندرويد",
-  },
-  {
-    key: "decision_whatsapp_requester",
-    label: "موافقة/رفض → واتساب مقدم الطلب",
-    hint: "يبلغ الخادم بنتيجة الطلب",
-  },
-  {
-    key: "decision_push_requester",
-    label: "موافقة/رفض → إشعار Push لمقدم الطلب",
-    hint: "يبلغ الخادم بالنتيجة على تطبيق الأندرويد",
-  },
-  {
-    key: "decision_whatsapp_admin",
-    label: "موافقة/رفض → واتساب أدمن",
-    hint: "نسخة للأدمن عند البت في الطلب",
-  },
-  {
-    key: "cancel_whatsapp_requester",
-    label: "إلغاء طلب → واتساب مقدم الطلب",
-    hint: "عند إلغاء الحجز",
-  },
-  {
-    key: "cancel_whatsapp_admin",
-    label: "إلغاء طلب → واتساب أدمن",
-    hint: "تنبيه الأدمن بالإلغاء",
-  },
-  {
-    key: "admin_booking_whatsapp",
-    label: "حجز يدوي من التقويم → واتساب",
-    hint: "اختياري للحجوزات اللي بيعملها الأدمن",
+    id: "manual",
+    title: "حجز يدوي من التقويم",
+    description: "الحجوزات اللي بيعملها الأدمن مباشرة",
+    icon: CalendarPlus,
+    items: [
+      {
+        key: "admin_booking_whatsapp",
+        label: "واتساب لصاحب الحجز",
+        hint: "رسالة تأكيد عند إضافة حجز من التقويم",
+      },
+    ],
   },
 ];
 
@@ -215,10 +245,6 @@ export function SettingsForm({ settings }: SettingsFormProps) {
         <TabsTrigger value="email">
           <Mail className="h-4 w-4" />
           إيميل
-        </TabsTrigger>
-        <TabsTrigger value="channels">
-          <Smartphone className="h-4 w-4" />
-          قنوات أخرى
         </TabsTrigger>
       </TabsList>
 
@@ -358,30 +384,59 @@ export function SettingsForm({ settings }: SettingsFormProps) {
       </TabsContent>
 
       <TabsContent value="notifications">
-        <Card>
-          <CardHeader>
-            <CardTitle>تحكم إشعارات النظام</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {NOTIFY_TOGGLES.map((item) => (
-              <label
-                key={item.key}
-                className="flex items-center justify-between gap-3 rounded-xl border border-border px-3 py-3"
-              >
-                <div>
-                  <p className="font-semibold">{item.label}</p>
-                  <p className="text-sm text-sand-11">{item.hint}</p>
-                </div>
-                <Switch
-                  checked={prefs[item.key]}
-                  onCheckedChange={(v) =>
-                    setPrefs({ ...prefs, [item.key]: v })
-                  }
-                />
-              </label>
-            ))}
+        <div className="space-y-5">
+          <div>
+            <h2 className="text-lg font-bold">التنبيهات</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              اختار إزاي النظام يبلّغ الأدمن والخدام في كل مرحلة
+            </p>
+          </div>
+
+          {NOTIFY_GROUPS.map((group) => {
+            const Icon = group.icon;
+            return (
+              <Card key={group.id}>
+                <CardHeader className="pb-3">
+                  <div className="flex items-start gap-3">
+                    <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-teal-3 text-teal-11">
+                      <Icon className="h-5 w-5" />
+                    </div>
+                    <div className="min-w-0">
+                      <CardTitle className="text-base">{group.title}</CardTitle>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        {group.description}
+                      </p>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-2 pt-0">
+                  {group.items.map((item) => (
+                    <label
+                      key={item.key}
+                      className="flex cursor-pointer items-center justify-between gap-3 rounded-xl border border-border/80 bg-sand-2/50 px-3.5 py-3 transition-colors hover:bg-sand-2"
+                    >
+                      <div className="min-w-0">
+                        <p className="font-semibold leading-snug">{item.label}</p>
+                        <p className="mt-0.5 text-sm text-muted-foreground">
+                          {item.hint}
+                        </p>
+                      </div>
+                      <Switch
+                        checked={prefs[item.key]}
+                        onCheckedChange={(v) =>
+                          setPrefs({ ...prefs, [item.key]: v })
+                        }
+                      />
+                    </label>
+                  ))}
+                </CardContent>
+              </Card>
+            );
+          })}
+
+          <div className="sticky bottom-3 z-10 flex justify-end">
             <Button
-              className="w-full gap-2 sm:w-auto"
+              className="gap-2 shadow-md"
               disabled={pending}
               onClick={() => {
                 startTransition(async () => {
@@ -394,8 +449,8 @@ export function SettingsForm({ settings }: SettingsFormProps) {
               <Save className="h-4 w-4" />
               حفظ التنبيهات
             </Button>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </TabsContent>
 
       <TabsContent value="whatsapp">
@@ -802,57 +857,6 @@ export function SettingsForm({ settings }: SettingsFormProps) {
           </CardContent>
         </Card>
       </TabsContent>
-
-      <TabsContent value="channels">
-        <Card>
-          <CardHeader>
-            <CardTitle>حالة القنوات الأخرى</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <ChannelRow
-              title="Telegram"
-              ok={Boolean(settings.channel_status?.telegram)}
-              hint="TELEGRAM_BOT_TOKEN + TELEGRAM_ADMIN_CHAT_ID في البيئة. الـ webhook: /api/telegram"
-            />
-            <ChannelRow
-              title="Email (SMTP)"
-              ok={Boolean(settings.channel_status?.email)}
-              hint="اضبط التفاصيل من تاب «إيميل» أو عبر SMTP_* في البيئة"
-            />
-            <ChannelRow
-              title="Evolution (من البيئة كاحتياطي)"
-              ok={Boolean(settings.channel_status?.evolution_env_fallback)}
-              hint="لو خانات الواتساب فوق فاضية، النظام بيستخدم متغيرات البيئة"
-            />
-            <p className="pt-2 text-sm text-sand-11">
-              تفعيل/إيقاف كل قناة بيتم من تاب «التنبيهات». ربط الواتساب من تاب
-              «واتساب»، والإيميل من تاب «إيميل».
-            </p>
-          </CardContent>
-        </Card>
-      </TabsContent>
     </Tabs>
-  );
-}
-
-function ChannelRow({
-  title,
-  ok,
-  hint,
-}: {
-  title: string;
-  ok: boolean;
-  hint: string;
-}) {
-  return (
-    <div className="flex items-start justify-between gap-3 rounded-xl border border-border px-3 py-3">
-      <div>
-        <p className="font-semibold">{title}</p>
-        <p className="text-sm text-sand-11">{hint}</p>
-      </div>
-      <Badge variant={ok ? "success" : "muted"}>
-        {ok ? "جاهز" : "غير مضبوط"}
-      </Badge>
-    </div>
   );
 }
