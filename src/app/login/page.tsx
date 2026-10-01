@@ -49,7 +49,7 @@ function LoginForm() {
           }}
         >
           <input type="hidden" name="next" value={next} />
-          <div className="space-y-2">
+          <div className="flex flex-col gap-2">
             <Label htmlFor="identifier">الإيميل أو رقم التليفون</Label>
             <Input
               id="identifier"
@@ -63,7 +63,7 @@ function LoginForm() {
               inputMode="email"
             />
           </div>
-            <div className="space-y-2">
+            <div className="flex flex-col gap-2">
               <Label htmlFor="password">كلمة المرور</Label>
               <PasswordInput
                 id="password"

@@ -308,7 +308,7 @@ export function RoomsManager({ rooms: initialRooms }: { rooms: Room[] }) {
           </DialogHeader>
           {editing && (
             <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2 sm:col-span-2">
+              <div className="flex flex-col gap-2 sm:col-span-2">
                 <Label>الاسم</Label>
                 <Input
                   value={editing.name ?? ""}
@@ -316,7 +316,7 @@ export function RoomsManager({ rooms: initialRooms }: { rooms: Room[] }) {
                   placeholder="مثال: كنيسة العذراء"
                 />
               </div>
-              <div className="space-y-2 sm:col-span-2">
+              <div className="flex flex-col gap-2 sm:col-span-2">
                 <Label>الدور / المنطقة</Label>
                 <Input
                   value={editing.floor ?? ""}
@@ -324,7 +324,7 @@ export function RoomsManager({ rooms: initialRooms }: { rooms: Room[] }) {
                   placeholder="مثال: الدور الثالث"
                 />
               </div>
-              <div className="space-y-2 sm:col-span-2">
+              <div className="flex flex-col gap-2 sm:col-span-2">
                 <Label>اللون</Label>
                 <div className="flex flex-wrap gap-2">
                   {ROOM_COLORS.map((c) => (

@@ -149,19 +149,19 @@ export function AdminCalendar({ days, rooms, occupancy, settings, weekStart }: P
                 });
               }}
             >
-              <div className="space-y-2">
+              <div className="flex flex-col gap-2">
                 <Label>اسم الخدمة</Label>
                 <Input name="service_name" required />
               </div>
-              <div className="space-y-2">
+              <div className="flex flex-col gap-2">
                 <Label>الاسم</Label>
                 <Input name="requester_name" required defaultValue="إدارة" />
               </div>
-              <div className="space-y-2">
+              <div className="flex flex-col gap-2">
                 <Label>التليفون</Label>
                 <Input name="requester_phone" required dir="ltr" className="text-left" />
               </div>
-              <div className="space-y-2">
+              <div className="flex flex-col gap-2">
                 <Label>ملاحظات</Label>
                 <Input name="notes" />
               </div>

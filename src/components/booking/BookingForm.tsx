@@ -113,7 +113,7 @@ export function BookingForm({
             </p>
           </div>
 
-          <div className="space-y-2">
+          <div className="flex flex-col gap-2">
             <Label htmlFor="serviceName">اسم الخدمة / الاجتماع</Label>
             <Input
               id="serviceName"
@@ -122,7 +122,7 @@ export function BookingForm({
               placeholder="مثال: اجتماع الشباب"
             />
           </div>
-          <div className="space-y-2">
+          <div className="flex flex-col gap-2">
             <Label htmlFor="notes">ملاحظات (اختياري)</Label>
             <Textarea id="notes" name="notes" placeholder="أي تفاصيل إضافية" />
           </div>

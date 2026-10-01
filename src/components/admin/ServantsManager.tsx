@@ -325,7 +325,7 @@ export function ServantsManager({ servants: initial }: { servants: Profile[] }) 
           </DialogHeader>
           {form && (
             <div className="space-y-4">
-              <div className="space-y-2">
+              <div className="flex flex-col gap-2">
                 <Label>الاسم</Label>
                 <Input
                   value={form.full_name}
@@ -335,7 +335,7 @@ export function ServantsManager({ servants: initial }: { servants: Profile[] }) 
                   placeholder="الاسم بالكامل"
                 />
               </div>
-              <div className="space-y-2">
+              <div className="flex flex-col gap-2">
                 <Label>البريد الإلكتروني</Label>
                 <Input
                   type="email"
@@ -346,7 +346,7 @@ export function ServantsManager({ servants: initial }: { servants: Profile[] }) 
                   placeholder="name@example.com"
                 />
               </div>
-              <div className="space-y-2">
+              <div className="flex flex-col gap-2">
                 <Label>رقم الواتساب</Label>
                 <Input
                   dir="ltr"
@@ -356,7 +356,7 @@ export function ServantsManager({ servants: initial }: { servants: Profile[] }) 
                   placeholder="01xxxxxxxxx"
                 />
               </div>
-              <div className="space-y-2">
+              <div className="flex flex-col gap-2">
                 <Label>الصلاحية</Label>
                 <Select
                   value={form.role}
@@ -373,7 +373,7 @@ export function ServantsManager({ servants: initial }: { servants: Profile[] }) 
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
+              <div className="flex flex-col gap-2">
                 <Label>
                   كلمة المرور
                   {form.id ? " (اتركها فارغة للإبقاء على الحالية)" : ""}

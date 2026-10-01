@@ -228,7 +228,7 @@ export function SettingsForm({ settings }: SettingsFormProps) {
             <CardTitle>إعدادات عامة</CardTitle>
           </CardHeader>
           <CardContent className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2 sm:col-span-2">
+            <div className="flex flex-col gap-2 sm:col-span-2">
               <Label>عنوان الموقع</Label>
               <Input
                 value={general.site_title}
@@ -238,7 +238,7 @@ export function SettingsForm({ settings }: SettingsFormProps) {
                 placeholder="مثال: حجز غرف مبنى الخدمات"
               />
             </div>
-            <div className="space-y-2">
+            <div className="flex flex-col gap-2">
               <Label>مدة الفترة (Slot)</Label>
               <Select
                 value={String(general.slot_duration_minutes)}
@@ -267,7 +267,7 @@ export function SettingsForm({ settings }: SettingsFormProps) {
                 بيحدد خانات الجدول واختيارات ساعة البداية/النهاية
               </p>
             </div>
-            <div className="space-y-2">
+            <div className="flex flex-col gap-2">
               <Label>بداية الأسبوع</Label>
               <Select
                 value={String(general.week_start_day)}
@@ -285,7 +285,7 @@ export function SettingsForm({ settings }: SettingsFormProps) {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
+            <div className="flex flex-col gap-2">
               <Label>ساعة البداية</Label>
               <HourSelect
                 value={general.open_hour}
@@ -296,7 +296,7 @@ export function SettingsForm({ settings }: SettingsFormProps) {
                 placeholder="من الساعة…"
               />
             </div>
-            <div className="space-y-2">
+            <div className="flex flex-col gap-2">
               <Label>ساعة النهاية</Label>
               <HourSelect
                 value={general.close_hour}
@@ -309,7 +309,7 @@ export function SettingsForm({ settings }: SettingsFormProps) {
                 placeholder="إلى الساعة…"
               />
             </div>
-            <div className="space-y-2">
+            <div className="flex flex-col gap-2">
               <Label>أقصى أسابيع للحجز مقدماً</Label>
               <Input
                 type="number"
@@ -325,7 +325,7 @@ export function SettingsForm({ settings }: SettingsFormProps) {
                 placeholder="مثال: 4"
               />
             </div>
-            <div className="space-y-2 sm:col-span-2">
+            <div className="flex flex-col gap-2 sm:col-span-2">
               <Label>الملاحظات الهامة</Label>
               <Textarea
                 className="min-h-[160px]"
@@ -421,7 +421,7 @@ export function SettingsForm({ settings }: SettingsFormProps) {
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="space-y-2">
+              <div className="flex flex-col gap-2">
                 <Label>رابط السيرفر (EVOLUTION_URL)</Label>
                 <Input
                   dir="ltr"
@@ -433,7 +433,7 @@ export function SettingsForm({ settings }: SettingsFormProps) {
                   }
                 />
               </div>
-              <div className="space-y-2">
+              <div className="flex flex-col gap-2">
                 <Label>
                   API Key
                   {hasKey ? " (اتركه فاضي للإبقاء على المحفوظ)" : ""}
@@ -449,7 +449,7 @@ export function SettingsForm({ settings }: SettingsFormProps) {
                   autoComplete="off"
                 />
               </div>
-              <div className="space-y-2">
+              <div className="flex flex-col gap-2">
                 <Label>اسم الـ Instance</Label>
                 <Input
                   dir="ltr"
@@ -461,7 +461,7 @@ export function SettingsForm({ settings }: SettingsFormProps) {
                   placeholder="اسم الـ Instance"
                 />
               </div>
-              <div className="space-y-2">
+              <div className="flex flex-col gap-2">
                 <Label>واتساب الأدمن (للإشعارات والاختبار)</Label>
                 <Input
                   dir="ltr"
@@ -616,7 +616,7 @@ export function SettingsForm({ settings }: SettingsFormProps) {
                 </Button>
               </div>
 
-              <div className="space-y-2 border-t border-border pt-4">
+              <div className="flex flex-col gap-2 border-t border-border pt-4">
                 <Label>رسالة تجريبية</Label>
                 <div className="flex flex-wrap gap-2">
                   <Input
@@ -661,7 +661,7 @@ export function SettingsForm({ settings }: SettingsFormProps) {
               إرسال مباشر عبر سيرفر البريد (Gmail / Hostinger / أي SMTP). القيم
               المحفوظة هنا لها أولوية على متغيرات البيئة.
             </p>
-            <div className="space-y-2 sm:col-span-2">
+            <div className="flex flex-col gap-2 sm:col-span-2">
               <Label>مضيف SMTP</Label>
               <Input
                 dir="ltr"
@@ -673,7 +673,7 @@ export function SettingsForm({ settings }: SettingsFormProps) {
                 }
               />
             </div>
-            <div className="space-y-2">
+            <div className="flex flex-col gap-2">
               <Label>المنفذ (Port)</Label>
               <Input
                 type="number"
@@ -705,7 +705,7 @@ export function SettingsForm({ settings }: SettingsFormProps) {
                 />
               </label>
             </div>
-            <div className="space-y-2">
+            <div className="flex flex-col gap-2">
               <Label>اسم المستخدم</Label>
               <Input
                 dir="ltr"
@@ -717,7 +717,7 @@ export function SettingsForm({ settings }: SettingsFormProps) {
                 }
               />
             </div>
-            <div className="space-y-2">
+            <div className="flex flex-col gap-2">
               <Label>
                 كلمة المرور
                 {hasSmtpPass ? " (اتركها فاضية للإبقاء على المحفوظة)" : ""}
@@ -733,7 +733,7 @@ export function SettingsForm({ settings }: SettingsFormProps) {
                 autoComplete="off"
               />
             </div>
-            <div className="space-y-2">
+            <div className="flex flex-col gap-2">
               <Label>عنوان المرسل (From) — الإيميل فقط</Label>
               <Input
                 dir="ltr"
@@ -748,7 +748,7 @@ export function SettingsForm({ settings }: SettingsFormProps) {
                 اسم المرسل الظاهر هيكون عنوان الموقع من تاب «عام»
               </p>
             </div>
-            <div className="space-y-2">
+            <div className="flex flex-col gap-2">
               <Label>إيميل الأدمن (المستلم)</Label>
               <Input
                 type="email"

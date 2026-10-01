@@ -110,7 +110,7 @@ export function BlackoutsManager({
           </p>
         </CardHeader>
         <CardContent className="grid gap-3 sm:grid-cols-2">
-          <div className="space-y-2 sm:col-span-2">
+          <div className="flex flex-col gap-2 sm:col-span-2">
             <Label>نوع الإغلاق</Label>
             <Select
               value={mode}
@@ -139,11 +139,11 @@ export function BlackoutsManager({
             </Select>
           </div>
 
-          <div className="space-y-2">
+          <div className="flex flex-col gap-2">
             <Label>{mode === "full_day" ? "من تاريخ" : "التاريخ"}</Label>
             <DatePicker value={date} onChange={setDate} placeholder="اختر التاريخ" />
           </div>
-          <div className="space-y-2">
+          <div className="flex flex-col gap-2">
             <Label>إلى تاريخ (اختياري)</Label>
             <DatePicker
               value={endDate}
@@ -154,7 +154,7 @@ export function BlackoutsManager({
 
           {mode === "hours" && (
             <>
-              <div className="space-y-2">
+              <div className="flex flex-col gap-2">
                 <Label>المكان</Label>
                 <Select value={roomId} onValueChange={setRoomId}>
                   <SelectTrigger>
@@ -170,8 +170,8 @@ export function BlackoutsManager({
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2" />
-              <div className="space-y-2">
+              <div className="flex flex-col gap-2" />
+              <div className="flex flex-col gap-2">
                 <Label>من الساعة</Label>
                 <HourSelect
                   value={start}
@@ -182,7 +182,7 @@ export function BlackoutsManager({
                   placeholder="من الساعة…"
                 />
               </div>
-              <div className="space-y-2">
+              <div className="flex flex-col gap-2">
                 <Label>إلى الساعة</Label>
                 <HourSelect
                   value={end}
@@ -214,7 +214,7 @@ export function BlackoutsManager({
             </div>
           )}
 
-          <div className="space-y-2 sm:col-span-2">
+          <div className="flex flex-col gap-2 sm:col-span-2">
             <Label>السبب</Label>
             <Input
               value={reason}

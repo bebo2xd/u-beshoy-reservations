@@ -32,7 +32,7 @@ export default function TrackLookupPage() {
                 if (code.trim()) router.push(`/r/${code.trim().toUpperCase()}`);
               }}
             >
-              <div className="space-y-2">
+              <div className="flex flex-col gap-2">
                 <Label htmlFor="code">كود المتابعة</Label>
                 <Input
                   id="code"

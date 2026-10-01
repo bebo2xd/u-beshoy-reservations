@@ -386,7 +386,7 @@ export function SchedulesManager({
           </DialogHeader>
           {form && (
             <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2 sm:col-span-2">
+              <div className="flex flex-col gap-2 sm:col-span-2">
                 <Label>عنوان الخدمة</Label>
                 <Input
                   value={form.title}
@@ -394,7 +394,7 @@ export function SchedulesManager({
                   placeholder="مثال: اجتماع الخدام / ابتدائي"
                 />
               </div>
-              <div className="space-y-2">
+              <div className="flex flex-col gap-2">
                 <Label>المكان</Label>
                 <Select
                   value={form.room_id}
@@ -412,7 +412,7 @@ export function SchedulesManager({
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
+              <div className="flex flex-col gap-2">
                 <Label>اليوم</Label>
                 <Select
                   value={String(form.day_of_week)}
@@ -430,7 +430,7 @@ export function SchedulesManager({
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
+              <div className="flex flex-col gap-2">
                 <Label>من الساعة</Label>
                 <HourSelect
                   value={form.start_hour}
@@ -441,7 +441,7 @@ export function SchedulesManager({
                   placeholder="من الساعة…"
                 />
               </div>
-              <div className="space-y-2">
+              <div className="flex flex-col gap-2">
                 <Label>إلى الساعة</Label>
                 <HourSelect
                   value={form.end_hour}
@@ -452,7 +452,7 @@ export function SchedulesManager({
                   placeholder="إلى الساعة…"
                 />
               </div>
-              <div className="space-y-2">
+              <div className="flex flex-col gap-2">
                 <Label>صالح من</Label>
                 <DatePicker
                   value={form.valid_from}
@@ -460,7 +460,7 @@ export function SchedulesManager({
                   placeholder="من تاريخ"
                 />
               </div>
-              <div className="space-y-2">
+              <div className="flex flex-col gap-2">
                 <Label>صالح حتى</Label>
                 <DatePicker
                   value={form.valid_until}
@@ -468,7 +468,7 @@ export function SchedulesManager({
                   placeholder="حتى تاريخ"
                 />
               </div>
-              <div className="space-y-2 sm:col-span-2">
+              <div className="flex flex-col gap-2 sm:col-span-2">
                 <Label>ملاحظات</Label>
                 <Input
                   value={form.notes}

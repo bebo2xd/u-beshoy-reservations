@@ -8,7 +8,6 @@ export type DecisionMessagePayload = {
   time_label: string;
   tracking_code: string;
   admin_note?: string | null;
-  site_title?: string | null;
 };
 
 /** رسالة واتساب أنيقة للموافقة / الرفض */
@@ -31,9 +30,6 @@ export function buildDecisionWhatsAppText(payload: DecisionMessagePayload): stri
   if (payload.admin_note?.trim()) {
     lines.push("", `📝 ملاحظة: ${payload.admin_note.trim()}`);
   }
-
-  lines.push("");
-  lines.push(payload.site_title?.trim() || "حجز الأماكن");
 
   return lines.join("\n");
 }

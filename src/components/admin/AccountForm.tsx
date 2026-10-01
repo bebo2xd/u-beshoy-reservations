@@ -32,7 +32,7 @@ export function AccountForm({ profile }: { profile: Profile }) {
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="grid gap-4 sm:grid-cols-2">
-          <div className="space-y-2">
+          <div className="flex flex-col gap-2">
             <Label>الاسم</Label>
             <Input
               value={form.full_name}
@@ -40,7 +40,7 @@ export function AccountForm({ profile }: { profile: Profile }) {
               placeholder="الاسم بالكامل"
             />
           </div>
-          <div className="space-y-2">
+          <div className="flex flex-col gap-2">
             <Label>البريد الإلكتروني</Label>
             <Input
               type="email"
@@ -51,7 +51,7 @@ export function AccountForm({ profile }: { profile: Profile }) {
               placeholder="name@example.com"
             />
           </div>
-          <div className="space-y-2">
+          <div className="flex flex-col gap-2">
             <Label>رقم الواتساب</Label>
             <Input
               dir="ltr"
@@ -61,7 +61,7 @@ export function AccountForm({ profile }: { profile: Profile }) {
               placeholder="01xxxxxxxxx"
             />
           </div>
-          <div className="space-y-2">
+          <div className="flex flex-col gap-2">
             <Label>كلمة مرور جديدة (اختياري)</Label>
             <PasswordInput
               dir="ltr"
