@@ -5,6 +5,7 @@ import {
   notifyAdminNewBookingWhatsApp,
   notifyRequesterWhatsApp,
 } from "./whatsapp";
+import { buildDecisionWhatsAppText } from "@/lib/whatsapp-link";
 import { getNotificationPrefs } from "@/lib/evolution/client";
 import {
   getActiveAdminUserIds,
@@ -103,20 +104,9 @@ export async function notifyBookingDecision(payload: {
   tracking_code: string;
 }) {
   const prefs = await getNotificationPrefs();
+  const text = buildDecisionWhatsAppText(payload);
   const statusAr =
     payload.status === "approved" ? "تمت الموافقة ✅" : "تم الرفض ❌";
-  const text = [
-    `*تحديث طلب الحجز*`,
-    statusAr,
-    `الخدمة: ${payload.service_name}`,
-    `المكان: ${payload.room_name}`,
-    `التاريخ: ${payload.date_label}`,
-    `الوقت: ${payload.time_label}`,
-    `الكود: ${payload.tracking_code}`,
-    payload.admin_note ? `ملاحظة: ${payload.admin_note}` : null,
-  ]
-    .filter(Boolean)
-    .join("\n");
 
   const deepLink = payload.tracking_code
     ? `/r/${payload.tracking_code}`

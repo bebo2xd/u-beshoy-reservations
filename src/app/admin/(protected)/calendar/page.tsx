@@ -14,7 +14,7 @@ export default async function CalendarPage({
   const week = params.week
     ? getWeekStartFriday(params.week)
     : getWeekStartFriday(todayCairo());
-  const data = await getWeekScheduleData(week);
+  const data = await getWeekScheduleData(week, { hideClosedDays: false });
 
   return (
     <div className="space-y-6">

@@ -6,6 +6,7 @@ import {
   WEEK_ORDER,
   DEFAULT_OPEN_HOUR,
   DEFAULT_CLOSE_HOUR,
+  hourToClock,
 } from "@/lib/constants";
 import type { WeekDay } from "@/lib/types";
 
@@ -128,14 +129,8 @@ export function maxBookableDate(maxWeeksAhead: number): string {
 
 /** Build a timestamptz range in Cairo for exclusion constraint helpers */
 export function cairoRange(date: string, startHour: number, endHour: number) {
-  const start = fromZonedTime(
-    `${date}T${String(startHour).padStart(2, "0")}:00:00`,
-    CAIRO_TZ
-  );
-  const end = fromZonedTime(
-    `${date}T${String(endHour).padStart(2, "0")}:00:00`,
-    CAIRO_TZ
-  );
+  const start = fromZonedTime(`${date}T${hourToClock(startHour)}`, CAIRO_TZ);
+  const end = fromZonedTime(`${date}T${hourToClock(endHour)}`, CAIRO_TZ);
   return { start, end };
 }
 

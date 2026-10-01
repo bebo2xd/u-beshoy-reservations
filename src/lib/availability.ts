@@ -7,8 +7,37 @@ import type {
   Room,
   ScheduleException,
 } from "@/lib/types";
-import { overlaps } from "@/lib/dates";
-import { DEFAULT_CLOSE_HOUR, DEFAULT_OPEN_HOUR } from "@/lib/constants";
+import { addCalendarDays, overlaps } from "@/lib/dates";
+import {
+  DEFAULT_CLOSE_HOUR,
+  DEFAULT_OPEN_HOUR,
+  DEFAULT_SLOT_DURATION_MINUTES,
+  normalizeHour,
+  slotStepHours,
+} from "@/lib/constants";
+
+/** Expand blackout into each YYYY-MM-DD it covers */
+export function blackoutDateRange(bl: Pick<Blackout, "date" | "end_date">): string[] {
+  const end = bl.end_date || bl.date;
+  if (end < bl.date) return [bl.date];
+  const dates: string[] = [];
+  let cur = bl.date;
+  while (cur <= end) {
+    dates.push(cur);
+    cur = addCalendarDays(cur, 1);
+  }
+  return dates;
+}
+
+/** Dates that should be hidden from the public booking calendar */
+export function hiddenBookingDates(blackouts: Blackout[]): Set<string> {
+  const set = new Set<string>();
+  for (const bl of blackouts) {
+    if (!bl.hide_day) continue;
+    for (const d of blackoutDateRange(bl)) set.add(d);
+  }
+  return set;
+}
 
 export interface AvailabilityInput {
   rooms: Room[];
@@ -20,7 +49,7 @@ export interface AvailabilityInput {
     "id" | "room_id" | "booking_date" | "start_hour" | "end_hour" | "service_name" | "status"
   >[];
   dates: string[]; // YYYY-MM-DD within the week
-  settings?: Pick<AppSettings, "open_hour" | "close_hour">;
+  settings?: Pick<AppSettings, "open_hour" | "close_hour" | "slot_duration_minutes">;
 }
 
 function dayOfWeekFromDate(dateStr: string): number {
@@ -51,8 +80,8 @@ export function buildOccupancy(input: AvailabilityInput): OccupancyBlock[] {
       blocks.push({
         room_id: rs.room_id,
         date,
-        start_hour: rs.start_hour,
-        end_hour: rs.end_hour,
+        start_hour: normalizeHour(Number(rs.start_hour)),
+        end_hour: normalizeHour(Number(rs.end_hour)),
         title: rs.title,
         kind: "recurring",
         color: room.color,
@@ -62,13 +91,14 @@ export function buildOccupancy(input: AvailabilityInput): OccupancyBlock[] {
     }
 
     for (const bl of input.blackouts) {
-      if (bl.date !== date) continue;
+      const rangeEnd = bl.end_date || bl.date;
+      if (date < bl.date || date > rangeEnd) continue;
       if (bl.room_id) {
         blocks.push({
           room_id: bl.room_id,
           date,
-          start_hour: bl.start_hour,
-          end_hour: bl.end_hour,
+          start_hour: normalizeHour(Number(bl.start_hour)),
+          end_hour: normalizeHour(Number(bl.end_hour)),
           title: bl.reason,
           kind: "blackout",
           color: "#8D8D86",
@@ -78,8 +108,8 @@ export function buildOccupancy(input: AvailabilityInput): OccupancyBlock[] {
           blocks.push({
             room_id: room.id,
             date,
-            start_hour: bl.start_hour,
-            end_hour: bl.end_hour,
+            start_hour: normalizeHour(Number(bl.start_hour)),
+            end_hour: normalizeHour(Number(bl.end_hour)),
             title: bl.reason,
             kind: "blackout",
             color: "#8D8D86",
@@ -95,8 +125,8 @@ export function buildOccupancy(input: AvailabilityInput): OccupancyBlock[] {
       blocks.push({
         room_id: b.room_id,
         date,
-        start_hour: b.start_hour,
-        end_hour: b.end_hour,
+        start_hour: normalizeHour(Number(b.start_hour)),
+        end_hour: normalizeHour(Number(b.end_hour)),
         title: b.status === "pending" ? "طلب قيد المراجعة" : b.service_name,
         kind: b.status === "pending" ? "pending" : "booking",
         color: b.status === "pending" ? "#FFB224" : room?.color,
@@ -139,20 +169,33 @@ export function getBlocksForSlot(
   );
 }
 
-export function hoursList(settings?: Pick<AppSettings, "open_hour" | "close_hour">): number[] {
+export function hoursList(
+  settings?: Pick<AppSettings, "open_hour" | "close_hour" | "slot_duration_minutes">
+): number[] {
   const open = settings?.open_hour ?? DEFAULT_OPEN_HOUR;
   const close = settings?.close_hour ?? DEFAULT_CLOSE_HOUR;
+  const step = slotStepHours(
+    settings?.slot_duration_minutes ?? DEFAULT_SLOT_DURATION_MINUTES
+  );
   const hours: number[] = [];
-  for (let h = open; h < close; h++) hours.push(h);
+  for (let h = open; h < close - 1e-9; h += step) {
+    hours.push(normalizeHour(h));
+  }
   return hours;
 }
 
-/** Expand contiguous selected hours into start/end */
-export function selectionFromHours(hours: number[]): { start: number; end: number } | null {
+/** Expand contiguous selected slots into start/end */
+export function selectionFromHours(
+  hours: number[],
+  step = 1
+): { start: number; end: number } | null {
   if (hours.length === 0) return null;
-  const sorted = [...hours].sort((a, b) => a - b);
+  const sorted = [...hours].map(normalizeHour).sort((a, b) => a - b);
   for (let i = 1; i < sorted.length; i++) {
-    if (sorted[i] !== sorted[i - 1] + 1) return null; // not contiguous
+    if (Math.abs(sorted[i] - sorted[i - 1] - step) > 1e-9) return null;
   }
-  return { start: sorted[0], end: sorted[sorted.length - 1] + 1 };
+  return {
+    start: sorted[0],
+    end: normalizeHour(sorted[sorted.length - 1] + step),
+  };
 }

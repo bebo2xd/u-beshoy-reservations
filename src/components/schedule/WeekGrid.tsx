@@ -188,7 +188,7 @@ export function WeekGrid({
                           !isPast &&
                           selectedRoomId === room.id &&
                           selectedDate === day.date &&
-                          selectedHours.includes(h);
+                          selectedHours.some((x) => Math.abs(x - h) < 1e-9);
                         return (
                           <div
                             key={h}

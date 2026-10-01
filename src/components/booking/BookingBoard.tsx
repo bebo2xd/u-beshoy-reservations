@@ -9,7 +9,7 @@ import { BookingForm } from "@/components/booking/BookingForm";
 import { WeekPicker } from "@/components/booking/WeekPicker";
 import { Button } from "@/components/ui/button";
 import { hoursList, selectionFromHours } from "@/lib/availability";
-import { rangeLabel } from "@/lib/constants";
+import { rangeLabel, slotStepHours } from "@/lib/constants";
 import {
   addCalendarDays,
   formatDateAr,
@@ -41,7 +41,10 @@ export function BookingBoard({
   const router = useRouter();
   const [navigating, startNav] = useTransition();
   const hours = useMemo(() => hoursList(settings), [settings]);
-  const [activeDate, setActiveDate] = useState(() => {
+  const step = useMemo(
+    () => slotStepHours(settings.slot_duration_minutes ?? 60),
+    [settings.slot_duration_minutes]
+  );  const [activeDate, setActiveDate] = useState(() => {
     const today = todayCairo();
     if (days.some((d) => d.date === today)) return today;
     const upcoming = days.find((d) => d.date >= today);
@@ -79,13 +82,17 @@ export function BookingBoard({
       return;
     }
     setSelectedHours((prev) => {
-      if (prev.includes(hour)) {
-        return prev.filter((h) => h !== hour);
+      if (prev.some((h) => Math.abs(h - hour) < 1e-9)) {
+        return prev.filter((h) => Math.abs(h - hour) >= 1e-9);
       }
       const next = [...prev, hour].sort((a, b) => a - b);
       for (let i = 1; i < next.length; i++) {
-        if (next[i] !== next[i - 1] + 1) {
-          toast.message("اختر ساعات متتالية من غير فواصل");
+        if (Math.abs(next[i] - next[i - 1] - step) > 1e-9) {
+          toast.message(
+            step < 1
+              ? "اختر فترات متتالية من غير فواصل"
+              : "اختر ساعات متتالية من غير فواصل"
+          );
           return prev;
         }
       }
@@ -93,7 +100,7 @@ export function BookingBoard({
     });
   }
 
-  const selection = selectionFromHours(selectedHours);
+  const selection = selectionFromHours(selectedHours, step);
 
   function clearSelection() {
     setSelectedRoomId(null);

@@ -42,3 +42,9 @@ export function buildNewBookingWhatsAppText(payload: {
     `الكود: ${payload.tracking_code}`,
   ].join("\n");
 }
+
+export {
+  buildDecisionWhatsAppText,
+  buildWhatsAppClickToChatUrl,
+} from "@/lib/whatsapp-link";
+

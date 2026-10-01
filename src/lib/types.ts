@@ -59,9 +59,13 @@ export interface Blackout {
   id: string;
   room_id: string | null;
   date: string;
+  /** Inclusive end of range; null/undefined = single day */
+  end_date?: string | null;
   start_hour: number;
   end_hour: number;
   reason: string;
+  /** Hide these days from the public booking calendar */
+  hide_day?: boolean;
   created_at?: string;
 }
 
@@ -88,6 +92,8 @@ export interface AppSettings {
   id: number;
   open_hour: number;
   close_hour: number;
+  /** 30 or 60 — size of each bookable slot cell */
+  slot_duration_minutes?: 30 | 60;
   week_start_day: number;
   max_weeks_ahead: number;
   important_notes: string;

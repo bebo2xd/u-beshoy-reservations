@@ -398,21 +398,32 @@ export async function addException(scheduleId: string, date: string, reason?: st
 export async function createBlackout(form: {
   room_id?: string | null;
   date: string;
+  end_date?: string | null;
   start_hour: number;
   end_hour: number;
   reason: string;
+  hide_day?: boolean;
 }) {
   const supabase = await requireAdmin();
+  if (form.end_date && form.end_date < form.date) {
+    return { ok: false as const, error: "تاريخ النهاية قبل البداية" };
+  }
+  if (form.end_hour <= form.start_hour) {
+    return { ok: false as const, error: "ساعة النهاية لازم تكون بعد البداية" };
+  }
   const { error } = await supabase.from("blackouts").insert({
     room_id: form.room_id || null,
     date: form.date,
+    end_date: form.end_date && form.end_date !== form.date ? form.end_date : null,
     start_hour: form.start_hour,
     end_hour: form.end_hour,
     reason: form.reason,
+    hide_day: form.hide_day ?? false,
   });
   if (error) return { ok: false as const, error: error.message };
   revalidatePath("/admin/blackouts");
   revalidatePath("/book");
+  revalidatePath("/admin/calendar");
   return { ok: true as const };
 }
 
@@ -441,25 +452,48 @@ export async function updateSettings(form: {
   important_notes: string;
   site_title: string;
   week_start_day?: number;
+  slot_duration_minutes?: 30 | 60;
 }) {
   const auth = await requirePermission("manage_settings");
   if (!auth.ok || !auth.supabase) {
     return { ok: false as const, error: auth.error ?? "غير مصرح" };
   }
-  const { error } = await auth.supabase
-    .from("settings")
-    .update({
-      open_hour: form.open_hour,
-      close_hour: form.close_hour,
-      max_weeks_ahead: form.max_weeks_ahead,
-      important_notes: form.important_notes,
-      site_title: form.site_title,
-      ...(form.week_start_day != null
-        ? { week_start_day: form.week_start_day }
-        : {}),
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", 1);
+
+  const payload: Record<string, unknown> = {
+    open_hour: form.open_hour,
+    close_hour: form.close_hour,
+    max_weeks_ahead: form.max_weeks_ahead,
+    important_notes: form.important_notes,
+    site_title: form.site_title,
+    updated_at: new Date().toISOString(),
+  };
+  if (form.week_start_day != null) payload.week_start_day = form.week_start_day;
+  if (form.slot_duration_minutes != null) {
+    payload.slot_duration_minutes = form.slot_duration_minutes;
+  }
+
+  let { error } = await auth.supabase.from("settings").update(payload).eq("id", 1);
+
+  // Column not migrated yet — save the rest and warn
+  if (
+    error &&
+    form.slot_duration_minutes != null &&
+    /slot_duration_minutes/i.test(error.message)
+  ) {
+    delete payload.slot_duration_minutes;
+    const retry = await auth.supabase.from("settings").update(payload).eq("id", 1);
+    error = retry.error;
+    if (!error) {
+      revalidatePath("/admin/settings");
+      revalidatePath("/book");
+      return {
+        ok: false as const,
+        error:
+          "باقي الإعدادات اتحفظت، لكن لازم تشغّل migration 0010 في Supabase عشان مدة الفترة (نصف ساعة)",
+      };
+    }
+  }
+
   if (error) return { ok: false as const, error: error.message };
   revalidatePath("/admin/settings");
   revalidatePath("/book");

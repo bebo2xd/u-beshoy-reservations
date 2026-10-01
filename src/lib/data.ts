@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { buildOccupancy, type AvailabilityInput } from "@/lib/availability";
+import { buildOccupancy, hiddenBookingDates, type AvailabilityInput } from "@/lib/availability";
 import { buildWeekDays, getWeekStartFriday, todayCairo } from "@/lib/dates";
 import {
   DEFAULT_CLOSE_HOUR,
@@ -20,6 +20,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   id: 1,
   open_hour: DEFAULT_OPEN_HOUR,
   close_hour: DEFAULT_CLOSE_HOUR,
+  slot_duration_minutes: 60,
   week_start_day: 5,
   max_weeks_ahead: 4,
   important_notes: DEFAULT_IMPORTANT_NOTES,
@@ -62,10 +63,13 @@ export async function getAllRooms(): Promise<Room[]> {
   return (data as Room[]) ?? [];
 }
 
-export async function getWeekScheduleData(weekStart?: string) {
+export async function getWeekScheduleData(
+  weekStart?: string,
+  options?: { hideClosedDays?: boolean }
+) {
   const friday = weekStart ?? getWeekStartFriday(todayCairo());
-  const days = buildWeekDays(friday);
-  const dates = days.map((d) => d.date);
+  const allDays = buildWeekDays(friday);
+  const dates = allDays.map((d) => d.date);
   const from = dates[0];
   const to = dates[dates.length - 1];
 
@@ -91,15 +95,26 @@ export async function getWeekScheduleData(weekStart?: string) {
         .select("*")
         .gte("exception_date", from)
         .lte("exception_date", to),
-      supabase.from("blackouts").select("*").gte("date", from).lte("date", to),
+      // Ranges may start before the week — fetch broadly then filter
+      supabase.from("blackouts").select("*").lte("date", to),
       supabase.rpc("get_public_bookings", { p_from: from, p_to: to }),
     ]);
 
   const rooms = (roomsRes.data as Room[]) ?? [];
   const schedules = (schedulesRes.data as RecurringSchedule[]) ?? [];
   const exceptions = (exceptionsRes.data as ScheduleException[]) ?? [];
-  const blackouts = (blackoutsRes.data as Blackout[]) ?? [];
+  const blackouts = ((blackoutsRes.data as Blackout[]) ?? []).filter((b) => {
+    const end = b.end_date || b.date;
+    return end >= from;
+  });
   const bookings = (bookingsRes.data ?? []) as AvailabilityInput["bookings"];
+
+  const hideClosed = options?.hideClosedDays !== false;
+  const hidden = hideClosed ? hiddenBookingDates(blackouts) : new Set<string>();
+  const days = hideClosed
+    ? allDays.filter((d) => !hidden.has(d.date))
+    : allDays;
+  const activeDates = days.map((d) => d.date);
 
   const occupancy: OccupancyBlock[] = buildOccupancy({
     rooms,
@@ -107,7 +122,7 @@ export async function getWeekScheduleData(weekStart?: string) {
     exceptions,
     blackouts,
     bookings,
-    dates,
+    dates: activeDates.length ? activeDates : dates,
     settings,
   });
 

@@ -199,6 +199,9 @@ export async function decideBooking(
   const roomName =
     (booking.rooms as { name?: string } | null)?.name ?? "مكان";
 
+  const dateLabel = formatDateAr(booking.booking_date);
+  const timeLabel = rangeLabel(booking.start_hour, booking.end_hour);
+
   after(async () => {
     try {
       await notifyBookingDecision({
@@ -207,8 +210,8 @@ export async function decideBooking(
         requester_phone: booking.requester_phone,
         service_name: booking.service_name,
         room_name: roomName,
-        date_label: formatDateAr(booking.booking_date),
-        time_label: rangeLabel(booking.start_hour, booking.end_hour),
+        date_label: dateLabel,
+        time_label: timeLabel,
         status,
         admin_note: adminNote,
         tracking_code: booking.tracking_code,
@@ -218,10 +221,26 @@ export async function decideBooking(
     }
   });
 
+  const { buildDecisionWhatsAppText, buildWhatsAppClickToChatUrl } =
+    await import("@/lib/whatsapp-link");
+  const whatsappText = buildDecisionWhatsAppText({
+    status,
+    service_name: booking.service_name,
+    room_name: roomName,
+    date_label: dateLabel,
+    time_label: timeLabel,
+    tracking_code: booking.tracking_code,
+    admin_note: adminNote,
+  });
+  const whatsappUrl = buildWhatsAppClickToChatUrl(
+    booking.requester_phone,
+    whatsappText
+  );
+
   revalidatePath("/admin");
   revalidatePath("/book");
   revalidatePath("/my-bookings");
-  return { ok: true as const };
+  return { ok: true as const, whatsappUrl, whatsappText };
 }
 
 export async function getMyBookingsAction() {

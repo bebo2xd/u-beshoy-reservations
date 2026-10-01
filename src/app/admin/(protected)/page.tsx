@@ -74,7 +74,16 @@ export default async function AdminDashboardPage({
                       {b.notes && (
                         <p className="text-foreground">📝 {b.notes}</p>
                       )}
-                      <BookingActions bookingId={b.id} />
+                      <BookingActions
+                        bookingId={b.id}
+                        requesterPhone={b.requester_phone}
+                        serviceName={b.service_name}
+                        roomName={b.rooms?.name ?? "مكان"}
+                        dateLabel={formatDateAr(b.booking_date)}
+                        timeLabel={rangeLabel(b.start_hour, b.end_hour)}
+                        trackingCode={b.tracking_code}
+                      />
+                   
                     </CardContent>
                   </Card>
                 </BookingDeepLinkTarget>

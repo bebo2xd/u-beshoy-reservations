@@ -97,10 +97,13 @@ const emptyForm = {
 export function SchedulesManager({
   schedules: initialSchedules,
   rooms,
+  slotDurationMinutes = 60,
 }: {
   schedules: ScheduleRow[];
   rooms: Room[];
+  slotDurationMinutes?: number;
 }) {
+  const step = slotDurationMinutes / 60;
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [schedules, setSchedules] = useState(initialSchedules);
@@ -434,6 +437,7 @@ export function SchedulesManager({
                   onChange={(start_hour) => setForm({ ...form, start_hour })}
                   min={0}
                   maxExclusive={24}
+                  step={step}
                   placeholder="من الساعة…"
                 />
               </div>
@@ -442,8 +446,9 @@ export function SchedulesManager({
                 <HourSelect
                   value={form.end_hour}
                   onChange={(end_hour) => setForm({ ...form, end_hour })}
-                  min={1}
+                  min={step}
                   maxExclusive={25}
+                  step={step}
                   placeholder="إلى الساعة…"
                 />
               </div>

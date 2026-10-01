@@ -23,6 +23,7 @@ import { hoursList, selectionFromHours } from "@/lib/availability";
 import { adminCreateBooking, addException } from "@/lib/actions/admin";
 import type { AppSettings, OccupancyBlock, Room, WeekDay } from "@/lib/types";
 import { getWeekStartFriday, addCalendarDays } from "@/lib/dates";
+import { slotStepHours } from "@/lib/constants";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { ChevronLeft, ChevronRight } from "lucide-react";
@@ -37,6 +38,10 @@ interface Props {
 
 export function AdminCalendar({ days, rooms, occupancy, settings, weekStart }: Props) {
   const hours = useMemo(() => hoursList(settings), [settings]);
+  const step = useMemo(
+    () => slotStepHours(settings.slot_duration_minutes ?? 60),
+    [settings.slot_duration_minutes]
+  );
   const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedHours, setSelectedHours] = useState<number[]>([]);
@@ -44,7 +49,7 @@ export function AdminCalendar({ days, rooms, occupancy, settings, weekStart }: P
   const [pending, startTransition] = useTransition();
   const router = useRouter();
 
-  const selection = selectionFromHours(selectedHours);
+  const selection = selectionFromHours(selectedHours, step);
 
   function handleSelectSlot(roomId: string, date: string, hour: number) {
     if (selectedRoomId !== roomId || selectedDate !== date) {
@@ -57,7 +62,7 @@ export function AdminCalendar({ days, rooms, occupancy, settings, weekStart }: P
       if (prev.includes(hour)) return prev.filter((h) => h !== hour);
       const next = [...prev, hour].sort((a, b) => a - b);
       for (let i = 1; i < next.length; i++) {
-        if (next[i] !== next[i - 1] + 1) return prev;
+        if (Math.abs(next[i] - next[i - 1] - step) > 1e-9) return prev;
       }
       return next;
     });

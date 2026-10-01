@@ -96,7 +96,7 @@ export function DayView({
                   !activeIsPast &&
                   selectedRoomId === room.id &&
                   selectedDate === activeDate &&
-                  selectedHours.includes(h);
+                  selectedHours.some((x) => Math.abs(x - h) < 1e-9);
                 return (
                   <div key={h} className="flex flex-col gap-1">
                     <span className="text-center text-xs font-semibold text-sand-11">

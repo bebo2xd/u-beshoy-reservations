@@ -142,6 +142,7 @@ export function SettingsForm({ settings }: SettingsFormProps) {
     close_hour: settings.close_hour,
     max_weeks_ahead: settings.max_weeks_ahead,
     week_start_day: settings.week_start_day,
+    slot_duration_minutes: (settings.slot_duration_minutes ?? 60) as 30 | 60,
     important_notes: settings.important_notes,
   });
   const [prefs, setPrefs] = useState<NotificationPrefs>(
@@ -238,42 +239,33 @@ export function SettingsForm({ settings }: SettingsFormProps) {
               />
             </div>
             <div className="space-y-2">
-              <Label>ساعة البداية</Label>
-              <HourSelect
-                value={general.open_hour}
-                onChange={(open_hour) => setGeneral({ ...general, open_hour })}
-                min={0}
-                maxExclusive={24}
-                placeholder="من الساعة…"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>ساعة النهاية</Label>
-              <HourSelect
-                value={general.close_hour}
-                onChange={(close_hour) =>
-                  setGeneral({ ...general, close_hour })
-                }
-                min={1}
-                maxExclusive={25}
-                placeholder="إلى الساعة…"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>أقصى أسابيع للحجز مقدماً</Label>
-              <Input
-                type="number"
-                min={1}
-                max={52}
-                value={general.max_weeks_ahead}
-                onChange={(e) =>
+              <Label>مدة الفترة (Slot)</Label>
+              <Select
+                value={String(general.slot_duration_minutes)}
+                onValueChange={(v) => {
+                  const slot_duration_minutes = Number(v) as 30 | 60;
+                  const step = slot_duration_minutes / 60;
+                  const snap = (h: number) =>
+                    Math.round(h / step) * step;
                   setGeneral({
                     ...general,
-                    max_weeks_ahead: Number(e.target.value),
-                  })
-                }
-                placeholder="مثال: 4"
-              />
+                    slot_duration_minutes,
+                    open_hour: snap(general.open_hour),
+                    close_hour: snap(general.close_hour),
+                  });
+                }}
+              >
+                <SelectTrigger className="h-12 rounded-xl text-base font-semibold">
+                  <SelectValue placeholder="مدة الفترة" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="60">كل ساعة</SelectItem>
+                  <SelectItem value="30">كل نصف ساعة</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                بيحدد خانات الجدول واختيارات ساعة البداية/النهاية
+              </p>
             </div>
             <div className="space-y-2">
               <Label>بداية الأسبوع</Label>
@@ -292,6 +284,46 @@ export function SettingsForm({ settings }: SettingsFormProps) {
                   <SelectItem value="0">الأحد</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>ساعة البداية</Label>
+              <HourSelect
+                value={general.open_hour}
+                onChange={(open_hour) => setGeneral({ ...general, open_hour })}
+                min={0}
+                maxExclusive={24}
+                step={general.slot_duration_minutes / 60}
+                placeholder="من الساعة…"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>ساعة النهاية</Label>
+              <HourSelect
+                value={general.close_hour}
+                onChange={(close_hour) =>
+                  setGeneral({ ...general, close_hour })
+                }
+                min={general.slot_duration_minutes / 60}
+                maxExclusive={25}
+                step={general.slot_duration_minutes / 60}
+                placeholder="إلى الساعة…"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>أقصى أسابيع للحجز مقدماً</Label>
+              <Input
+                type="number"
+                min={1}
+                max={52}
+                value={general.max_weeks_ahead}
+                onChange={(e) =>
+                  setGeneral({
+                    ...general,
+                    max_weeks_ahead: Number(e.target.value),
+                  })
+                }
+                placeholder="مثال: 4"
+              />
             </div>
             <div className="space-y-2 sm:col-span-2">
               <Label>الملاحظات الهامة</Label>
