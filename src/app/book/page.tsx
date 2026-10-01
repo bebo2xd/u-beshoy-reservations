@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Church, ClipboardList, LogOut, Shield } from "lucide-react";
+import { ClipboardList, LogOut, Shield } from "lucide-react";
 import { BookingBoard } from "@/components/booking/BookingBoard";
+import { BrandLogo } from "@/components/brand/BrandLogo";
 import { getWeekScheduleData } from "@/lib/data";
 import { getWeekStartFriday, todayCairo } from "@/lib/dates";
 import { getProfile } from "@/lib/auth/session";
@@ -35,9 +36,7 @@ export default async function BookPage({
       <header className="sticky top-0 z-30 border-b border-border bg-card/95 backdrop-blur-sm">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-4 py-4 sm:px-6">
           <div className="flex items-center gap-3.5 animate-fade-in">
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-sm">
-              <Church className="h-7 w-7" />
-            </div>
+            <BrandLogo size={56} className="shadow-sm" priority />
             <div>
               <h1 className="text-xl font-bold tracking-tight sm:text-2xl">
                 {settings.site_title}

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "127371108539",
+    "project_id": "church-reservations-app",
+    "storage_bucket": "church-reservations-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:127371108539:android:963ff84bd602615581099e",
+        "android_client_info": {
+          "package_name": "xd.church.reservations.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD2CP9rNpzZkMNdcIYJS2jcpy38O6tPMDw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

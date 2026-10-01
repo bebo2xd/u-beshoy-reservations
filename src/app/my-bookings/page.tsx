@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ArrowRight, Church } from "lucide-react";
+import { ArrowRight } from "lucide-react";
+import { BrandLogo } from "@/components/brand/BrandLogo";
 import { getProfile } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import { formatDateAr } from "@/lib/dates";
@@ -43,9 +44,7 @@ export default async function MyBookingsPage() {
       <header className="border-b border-border bg-card">
         <div className="mx-auto flex max-w-3xl items-center justify-between gap-4 px-4 py-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-              <Church className="h-5 w-5" />
-            </div>
+            <BrandLogo size={44} priority />
             <div>
               <h1 className="text-xl font-bold">طلباتي</h1>
               <p className="text-sm text-muted-foreground">{profile.full_name}</p>

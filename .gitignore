@@ -45,3 +45,14 @@ supabase/.temp/
 next-env.d.ts
 
 .vercel
+
+# Android local build outputs (source under /android is tracked)
+android/app/build/
+android/.gradle/
+android/captures/
+android/app/release/
+# Android signing secrets
+android/keystore.properties
+android/keystore/
+*.jks
+*.keystore

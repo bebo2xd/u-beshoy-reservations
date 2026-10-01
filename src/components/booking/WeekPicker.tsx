@@ -115,7 +115,7 @@ export function WeekPicker({ weekStart, onSelectWeek, disabled }: WeekPickerProp
               اختيار الأسبوع
             </span>
             <span className="truncate text-foreground sm:hidden">
-              أسبوع {formatDateShort(weekStart)}
+              {formatDateShort(weekStart)}
             </span>
             <span className="hidden truncate text-foreground sm:inline">
               أسبوع {formatDateAr(weekStart)}

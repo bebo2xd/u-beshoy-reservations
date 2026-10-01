@@ -21,6 +21,7 @@ import {
 import { cn } from "@/lib/utils";
 import { logoutAction } from "@/lib/actions/admin";
 import { Button } from "@/components/ui/button";
+import { BrandLogo } from "@/components/brand/BrandLogo";
 import type { PermissionKey } from "@/lib/permissions";
 
 const STORAGE_KEY = "admin-sidebar-collapsed";
@@ -154,9 +155,14 @@ export function AdminNav({
           collapsed && "lg:flex-col lg:items-center lg:px-0"
         )}
       >
+        <BrandLogo
+          size={collapsed ? 36 : 44}
+          className={cn("mt-0.5 shadow-sm", collapsed && "lg:mt-0")}
+          priority
+        />
         <div className={cn("min-w-0 flex-1", collapsed && "lg:hidden")}>
           <p className="text-xs text-muted-foreground">لوحة التحكم</p>
-          <h1 className="text-lg font-bold text-primary">حجز الغرف</h1>
+          <h1 className="text-lg font-bold text-primary">حجوزات الكنيسة</h1>
         </div>
         <Button
           type="button"

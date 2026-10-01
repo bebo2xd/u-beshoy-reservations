@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { IBM_Plex_Sans_Arabic } from "next/font/google";
 import { Toaster } from "sonner";
+import { OneSignalBootstrap } from "@/components/native/OneSignalBootstrap";
 import "./globals.css";
 
 const arabic = IBM_Plex_Sans_Arabic({
@@ -10,8 +11,17 @@ const arabic = IBM_Plex_Sans_Arabic({
 });
 
 export const metadata: Metadata = {
-  title: "حجز غرف مبنى الخدمات",
+  title: "حجوزات الكنيسة",
   description: "نظام حجز مواعيد غرف مبنى الخدمات الكنسي",
+  icons: {
+    icon: [
+      { url: "/brand/favicon-32.png", sizes: "32x32", type: "image/png" },
+      { url: "/brand/logo-64.png", sizes: "64x64", type: "image/png" },
+      { url: "/brand/logo-192.png", sizes: "192x192", type: "image/png" },
+    ],
+    apple: [{ url: "/brand/logo-192.png", sizes: "192x192" }],
+    shortcut: ["/brand/favicon-32.png"],
+  },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
@@ -21,6 +31,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <meta charSet="utf-8" />
       </head>
       <body className="min-h-full flex flex-col bg-background font-sans text-foreground">
+        <OneSignalBootstrap />
         {children}
         <Toaster position="top-center" dir="rtl" richColors closeButton />
       </body>

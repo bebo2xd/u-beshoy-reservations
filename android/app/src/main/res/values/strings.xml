@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">حجوزات الكنيسة</string>
+    <string name="title_activity_main">حجوزات الكنيسة</string>
+    <string name="package_name">xd.church.reservations.app</string>
+    <string name="custom_url_scheme">xd.church.reservations.app</string>
+</resources>

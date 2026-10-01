@@ -83,9 +83,19 @@ const NOTIFY_TOGGLES: {
     hint: "يرسل لرقم الأدمن عبر Evolution",
   },
   {
+    key: "new_booking_push_admin",
+    label: "طلب جديد → إشعار Push (أدمن)",
+    hint: "يفتح صفحة الموافقة داخل تطبيق الأندرويد",
+  },
+  {
     key: "decision_whatsapp_requester",
     label: "موافقة/رفض → واتساب مقدم الطلب",
     hint: "يبلغ الخادم بنتيجة الطلب",
+  },
+  {
+    key: "decision_push_requester",
+    label: "موافقة/رفض → إشعار Push لمقدم الطلب",
+    hint: "يبلغ الخادم بالنتيجة على تطبيق الأندرويد",
   },
   {
     key: "decision_whatsapp_admin",

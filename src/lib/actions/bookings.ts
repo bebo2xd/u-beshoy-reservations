@@ -1,5 +1,6 @@
 "use server";
 
+import { after } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getProfile, requireAdmin, requireAuth, requirePermission } from "@/lib/auth/session";
@@ -52,27 +53,37 @@ export async function submitBookingRequest(form: {
     return { ok: false as const, error: result.error ?? "تعذر إنشاء الطلب" };
   }
 
+  const notifyPayload = {
+    id: result.id!,
+    tracking_code: result.tracking_code!,
+    service_name: form.serviceName,
+    requester_name: auth.profile.full_name,
+    requester_phone: auth.profile.phone,
+    room_name: "" as string,
+    date_label: formatDateAr(form.date),
+    time_label: rangeLabel(form.startHour, form.endHour),
+    notes: form.notes,
+  };
+
   try {
     const { data: room } = await auth.supabase
       .from("rooms")
       .select("name")
       .eq("id", form.roomId)
       .single();
-
-    await notifyNewBooking({
-      id: result.id!,
-      tracking_code: result.tracking_code!,
-      service_name: form.serviceName,
-      requester_name: auth.profile.full_name,
-      requester_phone: auth.profile.phone,
-      room_name: room?.name ?? "مكان",
-      date_label: formatDateAr(form.date),
-      time_label: rangeLabel(form.startHour, form.endHour),
-      notes: form.notes,
-    });
-  } catch (e) {
-    console.error("Notify failed", e);
+    notifyPayload.room_name = room?.name ?? "مكان";
+  } catch {
+    notifyPayload.room_name = "مكان";
   }
+
+  // Run notifications after the response so Vercel keeps the function alive via waitUntil.
+  after(async () => {
+    try {
+      await notifyNewBooking(notifyPayload);
+    } catch (e) {
+      console.error("Notify failed", e);
+    }
+  });
 
   revalidatePath("/book");
   revalidatePath("/my-bookings");
@@ -188,15 +199,23 @@ export async function decideBooking(
   const roomName =
     (booking.rooms as { name?: string } | null)?.name ?? "مكان";
 
-  await notifyBookingDecision({
-    requester_phone: booking.requester_phone,
-    service_name: booking.service_name,
-    room_name: roomName,
-    date_label: formatDateAr(booking.booking_date),
-    time_label: rangeLabel(booking.start_hour, booking.end_hour),
-    status,
-    admin_note: adminNote,
-    tracking_code: booking.tracking_code,
+  after(async () => {
+    try {
+      await notifyBookingDecision({
+        id: booking.id,
+        created_by: booking.created_by,
+        requester_phone: booking.requester_phone,
+        service_name: booking.service_name,
+        room_name: roomName,
+        date_label: formatDateAr(booking.booking_date),
+        time_label: rangeLabel(booking.start_hour, booking.end_hour),
+        status,
+        admin_note: adminNote,
+        tracking_code: booking.tracking_code,
+      });
+    } catch (e) {
+      console.error("Decision notify failed", e);
+    }
   });
 
   revalidatePath("/admin");

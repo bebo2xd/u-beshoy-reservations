@@ -23,7 +23,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   week_start_day: 5,
   max_weeks_ahead: 4,
   important_notes: DEFAULT_IMPORTANT_NOTES,
-  site_title: "حجز غرف مبنى الخدمات",
+  site_title: "حجوزات الكنيسة",
   notification_prefs: undefined,
   evolution_url: null,
   evolution_api_key: null,

@@ -14,7 +14,7 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
-import { Church } from "lucide-react";
+import { BrandLogo } from "@/components/brand/BrandLogo";
 import { Suspense } from "react";
 
 function LoginForm() {
@@ -29,10 +29,10 @@ function LoginForm() {
   return (
     <Card className="w-full max-w-md">
       <CardHeader className="text-center">
-        <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-          <Church className="h-6 w-6" />
+        <div className="mx-auto mb-2">
+          <BrandLogo size={72} className="mx-auto shadow-sm" priority />
         </div>
-        <CardTitle>تسجيل الدخول</CardTitle>
+        <CardTitle>حجوزات الكنيسة</CardTitle>
         <CardDescription>
           ادخل بالإيميل أو رقم التليفون — للخدام المسجّلين فقط
         </CardDescription>

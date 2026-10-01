@@ -52,6 +52,8 @@ export async function POST(req: NextRequest) {
 
     const roomName = (booking.rooms as { name?: string } | null)?.name ?? "مكان";
     await notifyBookingDecision({
+      id: booking.id,
+      created_by: booking.created_by,
       requester_phone: booking.requester_phone,
       service_name: booking.service_name,
       room_name: roomName,

@@ -1,7 +1,6 @@
 "use client";
 
 import { Clock } from "lucide-react";
-import { hourLabel } from "@/lib/constants";
 import {
   Select,
   SelectContent,
@@ -27,8 +26,11 @@ interface HourSelectProps {
 }
 
 function labelForHour(hour: number): string {
-  if (hour === 24) return "12 ص (منتصف الليل)";
-  return hourLabel(hour);
+  if (hour === 24) return "12:00 صباحاً (منتصف الليل)";
+  if (hour === 0) return "12:00 صباحاً";
+  if (hour < 12) return `${hour}:00 صباحاً`;
+  if (hour === 12) return "12:00 مساءً";
+  return `${hour - 12}:00 مساءً`;
 }
 
 export function HourSelect({
@@ -56,17 +58,21 @@ export function HourSelect({
         className={cn(
           "h-12 rounded-xl px-3.5 text-base font-semibold shadow-sm",
           "hover:border-teal-9/35 focus:border-teal-9/50",
+          // Override SelectTrigger's [&>span]:line-clamp-1 — it forces
+          // -webkit-box and stacks the icon + value vertically.
+          "[&>span]:line-clamp-none",
           className
         )}
       >
-        <span className="flex min-w-0 flex-1 items-center gap-2.5 text-right">
-          {showIcon && (
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-teal-3 text-teal-11">
-              <Clock className="h-4 w-4" />
-            </span>
-          )}
-          <SelectValue placeholder={placeholder} />
-        </span>
+        {showIcon && (
+          <span
+            className="pointer-events-none flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-sand-3 text-teal-11"
+            aria-hidden
+          >
+            <Clock className="h-3.5 w-3.5" strokeWidth={2.25} />
+          </span>
+        )}
+        <SelectValue placeholder={placeholder} />
       </SelectTrigger>
       <SelectContent className="max-h-72">
         {hours.map((h) => (
