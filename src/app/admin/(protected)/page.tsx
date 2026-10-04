@@ -3,7 +3,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { BookingActions } from "@/components/admin/BookingActions";
 import { BookingDeepLinkTarget } from "@/components/admin/BookingDeepLink";
-import { BookingWhatsAppLink } from "@/components/admin/BookingWhatsAppLink";
 import { formatDateAr } from "@/lib/dates";
 import { rangeLabel } from "@/lib/constants";
 
@@ -75,15 +74,7 @@ export default async function AdminDashboardPage({
                       {b.notes && (
                         <p className="text-foreground">📝 {b.notes}</p>
                       )}
-                      <BookingActions
-                        bookingId={b.id}
-                        requesterPhone={b.requester_phone}
-                        serviceName={b.service_name}
-                        roomName={b.rooms?.name ?? "مكان"}
-                        dateLabel={formatDateAr(b.booking_date)}
-                        timeLabel={rangeLabel(b.start_hour, b.end_hour)}
-                        trackingCode={b.tracking_code}
-                      />
+                      <BookingActions bookingId={b.id} />
                     </CardContent>
                   </Card>
                 </BookingDeepLinkTarget>
@@ -109,22 +100,7 @@ export default async function AdminDashboardPage({
                     {rangeLabel(b.start_hour, b.end_hour)}
                   </p>
                 </div>
-                <div className="flex items-center gap-2">
-                  <BookingWhatsAppLink
-                    phone={b.requester_phone}
-                    requesterName={b.requester_name}
-                    serviceName={b.service_name}
-                    roomName={b.rooms?.name ?? "مكان"}
-                    dateLabel={formatDateAr(b.booking_date)}
-                    timeLabel={rangeLabel(b.start_hour, b.end_hour)}
-                    trackingCode={b.tracking_code}
-                    adminNote={b.admin_note}
-                    defaultStatus={
-                      b.status === "rejected" ? "rejected" : "approved"
-                    }
-                  />
-                  <StatusBadge status={b.status} />
-                </div>
+                <StatusBadge status={b.status} />
               </div>
             ))}
             {recent.length === 0 && (

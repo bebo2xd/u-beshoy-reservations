@@ -221,26 +221,10 @@ export async function decideBooking(
     }
   });
 
-  const { buildDecisionWhatsAppText, buildWhatsAppClickToChatUrl } =
-    await import("@/lib/whatsapp-link");
-  const whatsappText = buildDecisionWhatsAppText({
-    status,
-    service_name: booking.service_name,
-    room_name: roomName,
-    date_label: dateLabel,
-    time_label: timeLabel,
-    tracking_code: booking.tracking_code,
-    admin_note: adminNote,
-  });
-  const whatsappUrl = buildWhatsAppClickToChatUrl(
-    booking.requester_phone,
-    whatsappText
-  );
-
   revalidatePath("/admin");
   revalidatePath("/book");
   revalidatePath("/my-bookings");
-  return { ok: true as const, whatsappUrl, whatsappText };
+  return { ok: true as const };
 }
 
 export async function getMyBookingsAction() {

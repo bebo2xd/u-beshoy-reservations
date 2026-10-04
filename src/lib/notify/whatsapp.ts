@@ -59,7 +59,4 @@ export function buildNewBookingWhatsAppText(payload: {
   ].join("\n");
 }
 
-export {
-  buildDecisionWhatsAppText,
-  buildWhatsAppClickToChatUrl,
-} from "@/lib/whatsapp-link";
+export { buildDecisionWhatsAppText } from "@/lib/whatsapp-link";

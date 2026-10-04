@@ -1,5 +1,3 @@
-import { formatPhone } from "@/lib/utils";
-
 export type DecisionMessagePayload = {
   status: "approved" | "rejected";
   service_name: string;
@@ -32,14 +30,4 @@ export function buildDecisionWhatsAppText(payload: DecisionMessagePayload): stri
   }
 
   return lines.join("\n");
-}
-
-/** رابط wa.me يفتح واتساب بالرسالة جاهزة */
-export function buildWhatsAppClickToChatUrl(
-  phone: string,
-  text: string
-): string | null {
-  const formatted = formatPhone(phone);
-  if (!formatted) return null;
-  return `https://wa.me/${formatted}?text=${encodeURIComponent(text)}`;
 }
