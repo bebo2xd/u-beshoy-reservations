@@ -8,7 +8,6 @@ import { CUSTOM_FLAG, PERMISSION_KEYS } from "@/lib/permissions";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { formatDateTimeArCairo } from "@/lib/dates";
-import { blackoutDateRange } from "@/lib/availability";
 
 async function requireAdmin() {
   const result = await requireAdminSession();
@@ -404,13 +403,6 @@ function isMissingDbColumn(message: string | undefined, column: string) {
   );
 }
 
-async function blackoutsHaveRangeColumns(
-  supabase: Awaited<ReturnType<typeof requireAdmin>>
-) {
-  const { error } = await supabase.from("blackouts").select("end_date").limit(1);
-  return !error;
-}
-
 export async function createBlackout(form: {
   room_id?: string | null;
   date: string;
@@ -430,43 +422,28 @@ export async function createBlackout(form: {
 
   const endDate =
     form.end_date && form.end_date !== form.date ? form.end_date : null;
-  const hideDay = Boolean(form.hide_day);
-  const base = {
+
+  const { error } = await supabase.from("blackouts").insert({
     room_id: form.room_id || null,
     date: form.date,
+    end_date: endDate,
     start_hour: form.start_hour,
     end_hour: form.end_hour,
     reason: form.reason,
-  };
+    hide_day: Boolean(form.hide_day),
+  });
 
-  const hasRangeCols = await blackoutsHaveRangeColumns(supabase);
-
-  const { error } = hasRangeCols
-    ? await supabase.from("blackouts").insert({
-        ...base,
-        ...(endDate ? { end_date: endDate } : {}),
-        ...(hideDay ? { hide_day: true } : {}),
-      })
-    : await supabase.from("blackouts").insert(
-        blackoutDateRange({ date: form.date, end_date: endDate }).map((date) => ({
-          ...base,
-          date,
-        }))
-      );
-
-  if (
-    error &&
-    (isMissingDbColumn(error.message, "end_date") ||
-      isMissingDbColumn(error.message, "hide_day"))
-  ) {
-    const { error: retryError } = await supabase.from("blackouts").insert(
-      blackoutDateRange({ date: form.date, end_date: endDate }).map((date) => ({
-        ...base,
-        date,
-      }))
-    );
-    if (retryError) return { ok: false as const, error: retryError.message };
-  } else if (error) {
+  if (error) {
+    if (
+      isMissingDbColumn(error.message, "end_date") ||
+      isMissingDbColumn(error.message, "hide_day")
+    ) {
+      return {
+        ok: false as const,
+        error:
+          "عمود فترة الإغلاق مش ظاهر لسه — حدّث الصفحة وجرّب تاني",
+      };
+    }
     return { ok: false as const, error: error.message };
   }
 
