@@ -1,14 +1,27 @@
-import type { Metadata } from "next";
-import { IBM_Plex_Sans_Arabic } from "next/font/google";
+import type { Metadata, Viewport } from "next";
+import { Noto_Naskh_Arabic, Noto_Sans_Arabic } from "next/font/google";
 import { Toaster } from "sonner";
 import { OneSignalBootstrap } from "@/components/native/OneSignalBootstrap";
 import "./globals.css";
 
-const arabic = IBM_Plex_Sans_Arabic({
+const arabic = Noto_Sans_Arabic({
   variable: "--font-arabic",
   subsets: ["arabic"],
-  weight: ["300", "400", "500", "600", "700"],
+  weight: ["400", "500", "600", "700"],
 });
+
+const display = Noto_Naskh_Arabic({
+  variable: "--font-naskh",
+  subsets: ["arabic"],
+  weight: ["500", "600", "700"],
+});
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: "#F0F9FF",
+};
 
 export const metadata: Metadata = {
   title: "حجوزات الكنيسة",
@@ -26,7 +39,11 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="ar" dir="rtl" className={`${arabic.variable} h-full antialiased`}>
+    <html
+      lang="ar"
+      dir="rtl"
+      className={`${arabic.variable} ${display.variable} h-full antialiased`}
+    >
       <head>
         <meta charSet="utf-8" />
       </head>

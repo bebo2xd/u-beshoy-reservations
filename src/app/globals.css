@@ -1,31 +1,31 @@
 @import "tailwindcss";
 
 :root {
-  /* Radix Sand */
-  --sand-1: #fdfdfc;
-  --sand-2: #f9f9f8;
-  --sand-3: #f1f0ef;
-  --sand-4: #e9e8e6;
-  --sand-5: #e2e1de;
-  --sand-6: #dad9d6;
-  --sand-7: #cfceca;
-  --sand-8: #bcbbb5;
-  --sand-9: #8d8d86;
-  --sand-10: #82827c;
-  --sand-11: #63635e;
-  --sand-12: #21201c;
+  /* Slate neutrals — names kept so existing sand-* classes stay in sync */
+  --sand-1: #f8fbfd;
+  --sand-2: #f0f9ff;
+  --sand-3: #e8f4fb;
+  --sand-4: #dceaf3;
+  --sand-5: #d0e0ea;
+  --sand-6: #c2d4e0;
+  --sand-7: #a8bcc8;
+  --sand-8: #8aa0ae;
+  --sand-9: #64748b;
+  --sand-10: #475569;
+  --sand-11: #475569;
+  --sand-12: #0f172a;
 
-  /* Radix Teal */
-  --teal-3: #e7f9f5;
-  --teal-4: #d9f3ee;
-  --teal-5: #c7ebe5;
-  --teal-6: #afdfd7;
-  --teal-7: #8dcec3;
-  --teal-8: #53b9ab;
-  --teal-9: #12a594;
-  --teal-10: #0d9b8a;
-  --teal-11: #008573;
-  --teal-12: #0d3d38;
+  /* Calendar blue. Primary is deepened from #0284C7 so white labels clear 4.5:1 */
+  --teal-3: #e0f2fe;
+  --teal-4: #bae6fd;
+  --teal-5: #7dd3fc;
+  --teal-6: #38bdf8;
+  --teal-7: #0ea5e9;
+  --teal-8: #0284c7;
+  --teal-9: #0369a1;
+  --teal-10: #0284c7;
+  --teal-11: #075985;
+  --teal-12: #0c4a6e;
 
   /* Radix Amber */
   --amber-3: #fff7c2;
@@ -48,28 +48,30 @@
   --green-9: #30a46c;
   --green-11: #18794e;
 
-  --background: var(--sand-2);
-  --foreground: var(--sand-12);
+  --background: #f0f9ff;
+  --foreground: #0f172a;
   --card: #ffffff;
-  --card-foreground: var(--sand-12);
+  --card-foreground: #0f172a;
   --popover: #ffffff;
-  --popover-foreground: var(--sand-12);
-  --primary: var(--teal-9);
+  --popover-foreground: #0f172a;
+  --primary: #0369a1;
   --primary-foreground: #ffffff;
-  --secondary: var(--sand-3);
-  --secondary-foreground: var(--sand-12);
-  --muted: var(--sand-3);
-  --muted-foreground: var(--sand-11);
-  --accent: var(--teal-3);
-  --accent-foreground: var(--teal-12);
-  --destructive: var(--tomato-9);
+  --secondary: #e0f2fe;
+  --secondary-foreground: #0f172a;
+  --muted: #eff7fb;
+  --muted-foreground: #475569;
+  --accent: #ecfdf5;
+  --accent-foreground: #064e3b;
+  --cta: #047857;
+  --cta-foreground: #ffffff;
+  --destructive: #dc2626;
   --destructive-foreground: #ffffff;
-  --border: var(--sand-5);
-  --input: var(--sand-5);
-  --ring: var(--teal-8);
+  --border: #d7e7f0;
+  --input: #d7e7f0;
+  --ring: #0284c7;
   --pending: var(--amber-9);
   --pending-foreground: var(--amber-12);
-  --radius: 1rem;
+  --radius: 1.125rem;
 
   /* Readable base size for older users */
   --text-base: 1.0625rem;
@@ -95,6 +97,8 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  --color-cta: var(--cta);
+  --color-cta-foreground: var(--cta-foreground);
   --color-pending: var(--pending);
   --color-pending-foreground: var(--pending-foreground);
   --color-sand-1: var(--sand-1);
@@ -138,8 +142,20 @@ body {
   color: var(--foreground);
   font-family: var(--font-arabic), "Segoe UI", Tahoma, sans-serif;
   font-size: var(--text-base);
-  line-height: 1.65;
-  letter-spacing: 0.01em;
+  line-height: 1.55;
+  letter-spacing: 0;
+  overscroll-behavior-y: contain;
+}
+
+h1,
+.font-display {
+  font-family: var(--font-naskh), var(--font-arabic), serif;
+}
+
+button,
+a,
+[role="button"] {
+  -webkit-tap-highlight-color: transparent;
 }
 
 .slot-striped {
@@ -201,10 +217,10 @@ body {
 @keyframes soft-pulse {
   0%,
   100% {
-    box-shadow: 0 0 0 0 rgba(18, 165, 148, 0.35);
+    box-shadow: 0 0 0 0 rgba(3, 105, 161, 0.35);
   }
   50% {
-    box-shadow: 0 0 0 8px rgba(18, 165, 148, 0);
+    box-shadow: 0 0 0 8px rgba(3, 105, 161, 0);
   }
 }
 

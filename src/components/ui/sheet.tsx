@@ -40,7 +40,7 @@ function SheetContent({
         className={cn(
           "fixed z-50 flex flex-col gap-4 bg-card shadow-xl transition ease-in-out data-[state=closed]:duration-200 data-[state=open]:duration-300 data-[state=open]:animate-in data-[state=closed]:animate-out",
           side === "bottom" &&
-            "inset-x-0 bottom-0 max-h-[92vh] rounded-t-2xl border-t border-border p-5 data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom",
+            "inset-x-0 bottom-0 max-h-[92vh] rounded-t-3xl border-t border-border p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom",
           side === "right" &&
             "inset-y-0 right-0 h-full w-full max-w-md border-l border-border p-6 data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right",
           side === "left" &&
@@ -53,7 +53,7 @@ function SheetContent({
       >
         <div className="mx-auto mb-1 h-1.5 w-12 shrink-0 rounded-full bg-sand-5 sm:hidden" />
         {children}
-        <DialogPrimitive.Close className="absolute left-4 top-4 rounded-md p-1 opacity-70 transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring">
+        <DialogPrimitive.Close className="absolute left-3 top-3 flex h-11 w-11 items-center justify-center rounded-full opacity-70 transition-opacity hover:bg-secondary hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring">
           <X className="h-4 w-4" />
           <span className="sr-only">إغلاق</span>
         </DialogPrimitive.Close>
