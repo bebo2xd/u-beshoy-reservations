@@ -8,6 +8,7 @@ import { CUSTOM_FLAG, PERMISSION_KEYS } from "@/lib/permissions";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { formatDateTimeArCairo } from "@/lib/dates";
+import { blackoutDateRange } from "@/lib/availability";
 
 async function requireAdmin() {
   const result = await requireAdminSession();
@@ -395,6 +396,21 @@ export async function addException(scheduleId: string, date: string, reason?: st
   return { ok: true as const };
 }
 
+function isMissingDbColumn(message: string | undefined, column: string) {
+  if (!message) return false;
+  return (
+    message.includes(column) &&
+    /schema cache|Could not find|column/i.test(message)
+  );
+}
+
+async function blackoutsHaveRangeColumns(
+  supabase: Awaited<ReturnType<typeof requireAdmin>>
+) {
+  const { error } = await supabase.from("blackouts").select("end_date").limit(1);
+  return !error;
+}
+
 export async function createBlackout(form: {
   room_id?: string | null;
   date: string;
@@ -411,16 +427,49 @@ export async function createBlackout(form: {
   if (form.end_hour <= form.start_hour) {
     return { ok: false as const, error: "ساعة النهاية لازم تكون بعد البداية" };
   }
-  const { error } = await supabase.from("blackouts").insert({
+
+  const endDate =
+    form.end_date && form.end_date !== form.date ? form.end_date : null;
+  const hideDay = Boolean(form.hide_day);
+  const base = {
     room_id: form.room_id || null,
     date: form.date,
-    end_date: form.end_date && form.end_date !== form.date ? form.end_date : null,
     start_hour: form.start_hour,
     end_hour: form.end_hour,
     reason: form.reason,
-    hide_day: form.hide_day ?? false,
-  });
-  if (error) return { ok: false as const, error: error.message };
+  };
+
+  const hasRangeCols = await blackoutsHaveRangeColumns(supabase);
+
+  const { error } = hasRangeCols
+    ? await supabase.from("blackouts").insert({
+        ...base,
+        ...(endDate ? { end_date: endDate } : {}),
+        ...(hideDay ? { hide_day: true } : {}),
+      })
+    : await supabase.from("blackouts").insert(
+        blackoutDateRange({ date: form.date, end_date: endDate }).map((date) => ({
+          ...base,
+          date,
+        }))
+      );
+
+  if (
+    error &&
+    (isMissingDbColumn(error.message, "end_date") ||
+      isMissingDbColumn(error.message, "hide_day"))
+  ) {
+    const { error: retryError } = await supabase.from("blackouts").insert(
+      blackoutDateRange({ date: form.date, end_date: endDate }).map((date) => ({
+        ...base,
+        date,
+      }))
+    );
+    if (retryError) return { ok: false as const, error: retryError.message };
+  } else if (error) {
+    return { ok: false as const, error: error.message };
+  }
+
   revalidatePath("/admin/blackouts");
   revalidatePath("/book");
   revalidatePath("/admin/calendar");
