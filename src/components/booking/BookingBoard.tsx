@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, ChevronRight, Hand } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { WeekGrid, Legend } from "@/components/schedule/WeekGrid";
 import { DayView } from "@/components/schedule/DayView";
 import { BookingForm } from "@/components/booking/BookingForm";
@@ -122,12 +122,9 @@ export function BookingBoard({
 
   return (
     <div className={`space-y-5 ${navigating ? "opacity-60 transition-opacity" : ""}`}>
-      <div className="rounded-2xl border border-teal-9/20 bg-teal-3 px-4 py-3 text-base text-teal-12 animate-fade-in">
-        <p className="flex items-start gap-2 font-medium leading-relaxed">
-          <Hand className="mt-0.5 h-5 w-5 shrink-0" />
-          اضغط على الساعات المتاحة (بالأبيض) لاختيارها، ثم اضغط «متابعة الحجز». الساعات لازم تكون ورا بعض.
-        </p>
-      </div>
+      <p className="text-sm leading-relaxed text-muted-foreground">
+        اضغط الساعات المتاحة ورا بعض، ثم «متابعة الحجز».
+      </p>
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
@@ -157,7 +154,9 @@ export function BookingBoard({
             <ChevronLeft className="h-5 w-5" />
           </Button>
         </div>
-        <Legend />
+        <div className="hidden lg:block">
+          <Legend />
+        </div>
       </div>
 
       <div className="hidden lg:block">
@@ -189,7 +188,7 @@ export function BookingBoard({
       </div>
 
       {selection && selectedRoom && selectedDate && (
-        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-card p-4 shadow-[0_-8px_30px_rgba(33,32,28,0.12)] animate-bar-in">
+        <div className="fixed inset-x-0 z-30 animate-bar-in border-t border-border bg-card/95 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-[0_-8px_30px_rgba(15,23,42,0.08)] backdrop-blur-md bottom-[calc(4rem+env(safe-area-inset-bottom))] lg:bottom-0 lg:pb-4">
           <div className="mx-auto flex max-w-5xl flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="text-base leading-relaxed">
               <span className="font-bold text-lg">{selectedRoom.name}</span>
@@ -205,7 +204,7 @@ export function BookingBoard({
               <Button variant="outline" size="lg" className="flex-1 sm:flex-none" onClick={clearSelection}>
                 إلغاء
               </Button>
-              <Button size="lg" className="flex-1 sm:flex-none text-base" onClick={() => setFormOpen(true)}>
+              <Button variant="cta" size="lg" className="flex-1 sm:flex-none text-base" onClick={() => setFormOpen(true)}>
                 متابعة الحجز
               </Button>
             </div>

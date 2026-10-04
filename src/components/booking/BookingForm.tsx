@@ -148,6 +148,7 @@ export function BookingForm({
 
           <Button
             type="submit"
+            variant="cta"
             className="w-full"
             size="lg"
             disabled={pending || !agreed}

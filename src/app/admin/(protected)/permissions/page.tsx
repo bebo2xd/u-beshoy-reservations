@@ -3,6 +3,7 @@ import { PermissionsManager } from "@/components/admin/PermissionsManager";
 import type { AppRole } from "@/lib/types";
 import { DEFAULT_ROLE_PERMISSIONS } from "@/lib/permissions";
 import { requirePermission } from "@/lib/auth/session";
+import { ScreenHeader } from "@/components/ui/screen-header";
 import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
@@ -32,12 +33,10 @@ export default async function PermissionsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">الصلاحيات</h1>
-        <p className="text-sm text-muted-foreground">
-          تحكم في صلاحيات دور الأدمن والخادم — ولأي خادم صلاحيات خاصة من صفحة الخدام
-        </p>
-      </div>
+      <ScreenHeader
+        title="الصلاحيات"
+        description="تحكم في صلاحيات دور الأدمن والخادم. صلاحيات خادم معيّن تتعدل من صفحة الخدام."
+      />
       <PermissionsManager initialRole="servant" initialPermissions={initial} />
     </div>
   );

@@ -14,15 +14,15 @@ export default function TrackLookupPage() {
   const router = useRouter();
 
   return (
-    <div className="min-h-screen bg-sand-1 px-4 py-10">
-      <div className="mx-auto max-w-md space-y-4">
-        <Link href="/book" className="inline-flex items-center gap-1 text-sm text-primary hover:underline">
-          <ArrowRight className="h-4 w-4" />
+    <div className="flex min-h-dvh items-center bg-background px-5 py-10 pt-[max(2rem,env(safe-area-inset-top))]">
+      <div className="mx-auto w-full max-w-md space-y-4">
+        <Link href="/book" className="inline-flex min-h-11 items-center gap-1 text-sm font-semibold text-primary">
+          <ArrowRight className="h-4 w-4" aria-hidden />
           العودة للحجز
         </Link>
         <Card>
           <CardHeader>
-            <CardTitle>متابعة طلب الحجز</CardTitle>
+            <CardTitle className="text-2xl">متابعة طلب الحجز</CardTitle>
           </CardHeader>
           <CardContent>
             <form

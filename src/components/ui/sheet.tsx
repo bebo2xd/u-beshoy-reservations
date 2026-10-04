@@ -51,7 +51,9 @@ function SheetContent({
         )}
         {...props}
       >
-        <div className="mx-auto mb-1 h-1.5 w-12 shrink-0 rounded-full bg-sand-5 sm:hidden" />
+        {side === "bottom" && (
+          <div className="mx-auto mb-1 h-1.5 w-12 shrink-0 rounded-full bg-sand-5 sm:hidden" />
+        )}
         {children}
         <DialogPrimitive.Close className="absolute left-3 top-3 flex h-11 w-11 items-center justify-center rounded-full opacity-70 transition-opacity hover:bg-secondary hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring">
           <X className="h-4 w-4" />

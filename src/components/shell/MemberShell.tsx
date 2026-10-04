@@ -27,7 +27,7 @@ export function MemberShell({
 
   return (
     <div className="min-h-dvh bg-background">
-      <header className="sticky top-0 z-30 border-b border-border/80 bg-card/92 backdrop-blur-md pt-[env(safe-area-inset-top)]">
+      <header className="sticky top-0 z-30 border-b border-border/80 bg-card/95 pt-[env(safe-area-inset-top)] backdrop-blur-md">
         <div className="mx-auto flex max-w-7xl items-center gap-3 px-4 py-3">
           <BrandLogo size={40} className="shadow-sm" priority />
           <div className="min-w-0 flex-1">

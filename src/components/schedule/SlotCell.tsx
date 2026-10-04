@@ -1,5 +1,6 @@
 "use client";
 
+import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { OccupancyBlock } from "@/lib/types";
 
@@ -39,8 +40,9 @@ export function SlotCell({
             ? block.title
             : `متاح — الساعة ${hour}`
       }
+      aria-pressed={Boolean(selected)}
       className={cn(
-        "relative flex w-full items-center justify-center rounded-xl border text-center transition-all duration-200 active:scale-[0.97]",
+        "relative flex w-full items-center justify-center rounded-xl border text-center transition-colors",
         compact
           ? "min-h-[3.25rem] px-2 py-1.5 text-[13px] leading-snug font-semibold"
           : "min-h-14 px-2.5 py-2 text-sm font-semibold",
@@ -73,7 +75,7 @@ export function SlotCell({
       {busy ? (
         <span className="line-clamp-2">{block.title}</span>
       ) : selected ? (
-        <span>✓ مختار</span>
+        <Check className="h-4 w-4" aria-hidden />
       ) : null}
     </button>
   );

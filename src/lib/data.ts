@@ -15,6 +15,7 @@ import type {
   Room,
   ScheduleException,
 } from "@/lib/types";
+import { DEFAULT_UI_FONT, resolveUiFont } from "@/lib/ui-fonts";
 
 const DEFAULT_SETTINGS: AppSettings = {
   id: 1,
@@ -25,6 +26,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   max_weeks_ahead: 4,
   important_notes: DEFAULT_IMPORTANT_NOTES,
   site_title: "حجوزات الكنيسة",
+  ui_font: DEFAULT_UI_FONT,
   notification_prefs: undefined,
   evolution_url: null,
   evolution_api_key: null,
@@ -37,7 +39,11 @@ export async function getSettings(): Promise<AppSettings> {
   try {
     const supabase = await createClient();
     const { data } = await supabase.from("settings").select("*").eq("id", 1).maybeSingle();
-    return (data as AppSettings) ?? DEFAULT_SETTINGS;
+    return {
+      ...DEFAULT_SETTINGS,
+      ...(data as AppSettings),
+      ui_font: resolveUiFont((data as AppSettings | null)?.ui_font),
+    };
   } catch {
     return DEFAULT_SETTINGS;
   }

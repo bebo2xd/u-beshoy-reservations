@@ -38,7 +38,7 @@ export function DayView({
   return (
     <div className="space-y-5">
       <div className="flex gap-2.5 overflow-x-auto pb-2 scrollbar-thin -mx-1 px-1">
-        {days.map((d, i) => {
+        {days.map((d) => {
           const isActive = activeDate === d.date;
           return (
             <button
@@ -46,17 +46,15 @@ export function DayView({
               type="button"
               onClick={() => onChangeDate(d.date)}
               className={cn(
-                "shrink-0 rounded-2xl border px-3.5 py-3 text-center transition-all duration-200 min-w-[86px] active:scale-95",
-                "animate-fade-in",
-                `stagger-${Math.min(i + 1, 5)}`,
+                "min-h-16 min-w-[4.75rem] shrink-0 rounded-2xl border px-3 py-2 text-center transition-colors",
                 isActive
-                  ? "border-primary bg-primary text-primary-foreground shadow-md scale-[1.02]"
-                  : "border-border bg-card hover:border-primary/40 hover:bg-teal-3"
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "border-border bg-card hover:bg-secondary"
               )}
             >
-              <div className="text-base font-bold">{d.shortLabel}</div>
-              <div className="mt-0.5 text-sm font-medium opacity-85">
-                {d.date.slice(8)}/{d.date.slice(5, 7)}
+              <div className="text-sm font-bold">{d.shortLabel}</div>
+              <div className="mt-0.5 text-xs font-medium opacity-80">
+                {d.date === today ? "اليوم" : `${d.date.slice(8)}/${d.date.slice(5, 7)}`}
               </div>
             </button>
           );

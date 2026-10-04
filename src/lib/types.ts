@@ -1,4 +1,5 @@
 import type { NotificationPrefs } from "@/lib/notify/prefs";
+import type { UiFontId } from "@/lib/ui-fonts";
 
 export type BookingStatus = "pending" | "approved" | "rejected" | "cancelled";
 
@@ -98,6 +99,8 @@ export interface AppSettings {
   max_weeks_ahead: number;
   important_notes: string;
   site_title: string;
+  /** Arabic UI typeface used across the app */
+  ui_font?: UiFontId;
   notification_prefs?: NotificationPrefs;
   evolution_url?: string | null;
   evolution_api_key?: string | null;

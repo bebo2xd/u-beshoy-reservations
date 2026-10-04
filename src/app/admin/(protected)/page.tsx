@@ -1,8 +1,10 @@
+import { Hash, Phone, StickyNote, UserRound } from "lucide-react";
 import { getPendingBookings, getRecentBookings } from "@/lib/data";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { BookingActions } from "@/components/admin/BookingActions";
 import { BookingDeepLinkTarget } from "@/components/admin/BookingDeepLink";
+import { ScreenHeader } from "@/components/ui/screen-header";
 import { formatDateAr } from "@/lib/dates";
 import { rangeLabel } from "@/lib/constants";
 
@@ -21,12 +23,10 @@ export default async function AdminDashboardPage({
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">الطلبات</h1>
-        <p className="text-sm text-muted-foreground">
-          {pending.length} طلب بانتظار الموافقة
-        </p>
-      </div>
+      <ScreenHeader
+        title="الطلبات"
+        description={`${pending.length} طلب بانتظار الموافقة`}
+      />
 
       <section className="space-y-3">
         <h2 className="text-lg font-semibold">قيد المراجعة</h2>
@@ -64,15 +64,25 @@ export default async function AdminDashboardPage({
                       <Badge variant="pending">معلق</Badge>
                     </CardHeader>
                     <CardContent className="space-y-3 text-sm">
-                      <div className="flex flex-wrap gap-x-4 gap-y-1 text-muted-foreground">
-                        <span>👤 {b.requester_name}</span>
-                        <span dir="ltr">📱 {b.requester_phone}</span>
-                        <span dir="ltr" className="font-mono">
-                          🔖 {b.tracking_code}
+                      <div className="grid gap-2 text-muted-foreground sm:grid-cols-3">
+                        <span className="inline-flex items-center gap-2">
+                          <UserRound className="h-4 w-4 shrink-0" aria-hidden />
+                          {b.requester_name}
+                        </span>
+                        <span className="inline-flex items-center gap-2" dir="ltr">
+                          <Phone className="h-4 w-4 shrink-0" aria-hidden />
+                          {b.requester_phone}
+                        </span>
+                        <span className="inline-flex items-center gap-2 font-mono" dir="ltr">
+                          <Hash className="h-4 w-4 shrink-0" aria-hidden />
+                          {b.tracking_code}
                         </span>
                       </div>
                       {b.notes && (
-                        <p className="text-foreground">📝 {b.notes}</p>
+                        <p className="flex items-start gap-2 rounded-2xl bg-muted px-3 py-2 text-foreground">
+                          <StickyNote className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+                          {b.notes}
+                        </p>
                       )}
                       <BookingActions bookingId={b.id} />
                     </CardContent>

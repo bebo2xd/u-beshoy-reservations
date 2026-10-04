@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { ServantsManager } from "@/components/admin/ServantsManager";
+import { ScreenHeader } from "@/components/ui/screen-header";
 import type { Profile } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -13,12 +14,10 @@ export default async function ServantsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">الخدام</h1>
-        <p className="text-sm text-muted-foreground">
-          إدارة حسابات الخدام وصلاحياتهم — الحجز متاح للمسجّلين فقط
-        </p>
-      </div>
+      <ScreenHeader
+        title="الخدام"
+        description="إدارة حسابات الخدام وصلاحياتهم. الحجز متاح للمسجّلين فقط."
+      />
       <ServantsManager servants={(data as Profile[]) ?? []} />
     </div>
   );

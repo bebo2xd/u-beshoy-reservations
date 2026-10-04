@@ -1,20 +1,10 @@
 import type { Metadata, Viewport } from "next";
-import { Noto_Naskh_Arabic, Noto_Sans_Arabic } from "next/font/google";
 import { Toaster } from "sonner";
 import { OneSignalBootstrap } from "@/components/native/OneSignalBootstrap";
+import { getSettings } from "@/lib/data";
+import { uiFontClassNames } from "@/lib/fonts";
+import { resolveUiFont } from "@/lib/ui-fonts";
 import "./globals.css";
-
-const arabic = Noto_Sans_Arabic({
-  variable: "--font-arabic",
-  subsets: ["arabic"],
-  weight: ["400", "500", "600", "700"],
-});
-
-const display = Noto_Naskh_Arabic({
-  variable: "--font-naskh",
-  subsets: ["arabic"],
-  weight: ["500", "600", "700"],
-});
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -37,12 +27,16 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  const settings = await getSettings();
+  const uiFont = resolveUiFont(settings.ui_font);
+
   return (
     <html
       lang="ar"
       dir="rtl"
-      className={`${arabic.variable} ${display.variable} h-full antialiased`}
+      data-ui-font={uiFont}
+      className={`${uiFontClassNames} h-full antialiased`}
     >
       <head>
         <meta charSet="utf-8" />

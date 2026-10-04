@@ -23,6 +23,7 @@ import {
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import type { AppSettings } from "@/lib/types";
+import { UI_FONTS, resolveUiFont } from "@/lib/ui-fonts";
 import type { NotificationPrefs } from "@/lib/notify/prefs";
 import { mergeNotificationPrefs } from "@/lib/notify/prefs";
 import type { NotifyAdminRecipient } from "@/lib/notify/recipients";
@@ -199,6 +200,7 @@ export function SettingsForm({
     week_start_day: settings.week_start_day,
     slot_duration_minutes: (settings.slot_duration_minutes ?? 60) as 30 | 60,
     important_notes: settings.important_notes,
+    ui_font: resolveUiFont(settings.ui_font),
   });
   const [prefs, setPrefs] = useState<NotificationPrefs>(
     mergeNotificationPrefs(settings.notification_prefs)
@@ -281,6 +283,10 @@ export function SettingsForm({
   }, [refreshStatus]);
 
   useEffect(() => {
+    document.documentElement.setAttribute("data-ui-font", general.ui_font);
+  }, [general.ui_font]);
+
+  useEffect(() => {
     if (!polling) return;
     const id = setInterval(async () => {
       const res = await refreshStatus();
@@ -330,6 +336,37 @@ export function SettingsForm({
                 }
                 placeholder="مثال: حجز غرف مبنى الخدمات"
               />
+            </div>
+            <div className="flex flex-col gap-2 sm:col-span-2">
+              <Label>خط الواجهة</Label>
+              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                {UI_FONTS.map((font) => {
+                  const selected = general.ui_font === font.id;
+                  return (
+                    <button
+                      key={font.id}
+                      type="button"
+                      onClick={() =>
+                        setGeneral({ ...general, ui_font: font.id })
+                      }
+                      className={cn(
+                        "rounded-2xl border px-4 py-3 text-right transition-colors",
+                        selected
+                          ? "border-primary bg-secondary"
+                          : "border-border bg-card hover:bg-secondary"
+                      )}
+                      style={{ fontFamily: `var(${font.cssVar})` }}
+                    >
+                      <span className="block text-lg font-bold leading-tight">
+                        حجوزات الكنيسة
+                      </span>
+                      <span className="mt-1 block text-sm text-muted-foreground">
+                        {font.label} · {font.hint}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
             <div className="flex flex-col gap-2">
               <Label>مدة الفترة (Slot)</Label>

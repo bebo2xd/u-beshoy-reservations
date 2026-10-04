@@ -25,7 +25,7 @@ export default async function ProtectedAdminLayout({
             : null
         }
       />
-      <main className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 sm:p-6 lg:p-8">
+      <main className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-5 sm:px-6 lg:px-8">
         {children}
       </main>
     </div>

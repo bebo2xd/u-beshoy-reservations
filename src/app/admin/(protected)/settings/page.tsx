@@ -2,6 +2,7 @@ import { getSettings } from "@/lib/data";
 import { SettingsForm } from "@/components/admin/SettingsForm";
 import { mergeNotificationPrefs } from "@/lib/notify/prefs";
 import { listActiveAdmins } from "@/lib/notify/recipients";
+import { ScreenHeader } from "@/components/ui/screen-header";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
@@ -49,12 +50,10 @@ export default async function SettingsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">الإعدادات</h1>
-        <p className="text-sm text-muted-foreground">
-          عام · تنبيهات · واتساب · إيميل SMTP
-        </p>
-      </div>
+      <ScreenHeader
+        title="الإعدادات"
+        description="عام، خط الواجهة، تنبيهات، واتساب، وإيميل SMTP"
+      />
       <SettingsForm
         settings={{
           ...settings,

@@ -50,10 +50,10 @@ export default async function TrackPage({
   const st = statusMap[b.status] ?? statusMap.pending;
 
   return (
-    <div className="min-h-screen bg-sand-1 px-4 py-10">
+    <div className="min-h-dvh bg-background px-5 py-8 pt-[max(1.5rem,env(safe-area-inset-top))] pb-[max(1.5rem,env(safe-area-inset-bottom))]">
       <div className="mx-auto max-w-md space-y-4">
-        <Link href="/book" className="inline-flex items-center gap-1 text-sm text-primary hover:underline">
-          <ArrowRight className="h-4 w-4" />
+        <Link href="/book" className="inline-flex min-h-11 items-center gap-1 text-sm font-semibold text-primary">
+          <ArrowRight className="h-4 w-4" aria-hidden />
           العودة للحجز
         </Link>
 
@@ -97,9 +97,9 @@ export default async function TrackPage({
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="flex items-start justify-between gap-4 border-b border-border/70 pb-2 last:border-0">
+    <div className="flex min-h-11 items-center justify-between gap-4 border-b border-border/70 py-2 last:border-0">
       <span className="text-muted-foreground">{label}</span>
-      <span className="font-medium text-left">{children}</span>
+      <span className="text-left font-semibold">{children}</span>
     </div>
   );
 }

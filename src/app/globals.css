@@ -121,6 +121,7 @@
   --color-green-9: var(--green-9);
   --color-green-11: var(--green-11);
   --font-sans: var(--font-arabic);
+  --font-weight-semibold: 700;
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -135,6 +136,27 @@ html {
   font-size: 17px;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+  --font-arabic: var(--font-tajawal);
+}
+
+html[data-ui-font="cairo"] {
+  --font-arabic: var(--font-cairo);
+}
+
+html[data-ui-font="ibm-plex"] {
+  --font-arabic: var(--font-ibm-plex);
+}
+
+html[data-ui-font="almarai"] {
+  --font-arabic: var(--font-almarai);
+}
+
+html[data-ui-font="readex"] {
+  --font-arabic: var(--font-readex);
+}
+
+html[data-ui-font="el-messiri"] {
+  --font-arabic: var(--font-el-messiri);
 }
 
 body {
@@ -142,14 +164,16 @@ body {
   color: var(--foreground);
   font-family: var(--font-arabic), "Segoe UI", Tahoma, sans-serif;
   font-size: var(--text-base);
-  line-height: 1.55;
+  line-height: 1.6;
   letter-spacing: 0;
   overscroll-behavior-y: contain;
 }
 
 h1,
+h2,
 .font-display {
-  font-family: var(--font-naskh), var(--font-arabic), serif;
+  font-family: var(--font-arabic), "Segoe UI", Tahoma, sans-serif;
+  letter-spacing: -0.02em;
 }
 
 button,

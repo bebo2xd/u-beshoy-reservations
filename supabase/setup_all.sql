@@ -131,7 +131,8 @@ CREATE TABLE public.settings (
   smtp_password text,
   smtp_from text,
   admin_email text,
-  notify_admin_ids uuid[] DEFAULT NULL
+  notify_admin_ids uuid[] DEFAULT NULL,
+  ui_font text NOT NULL DEFAULT 'tajawal'
 );
 
 INSERT INTO public.settings (id, important_notes) VALUES (

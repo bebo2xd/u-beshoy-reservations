@@ -3,17 +3,27 @@
 import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { cancelBooking } from "@/lib/actions/bookings";
 import { toast } from "sonner";
 
-export function CancelButton({ code }: { code: string }) {
+export function CancelButton({
+  code,
+  className,
+  size = "default",
+}: {
+  code: string;
+  className?: string;
+  size?: "default" | "sm" | "lg";
+}) {
   const [pending, startTransition] = useTransition();
   const router = useRouter();
 
   return (
     <Button
       variant="destructive"
-      className="w-full sm:w-auto"
+      size={size}
+      className={cn("w-full sm:w-auto", className)}
       disabled={pending}
       onClick={() => {
         if (!confirm("هل تريد إلغاء طلب الحجز؟")) return;

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getWeekScheduleData } from "@/lib/data";
 import { getWeekStartFriday, todayCairo } from "@/lib/dates";
 import { AdminCalendar } from "@/components/admin/AdminCalendar";
+import { ScreenHeader } from "@/components/ui/screen-header";
 
 export const dynamic = "force-dynamic";
 
@@ -19,12 +20,10 @@ export default async function CalendarPage({
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold">التقويم</h1>
-          <p className="text-sm text-muted-foreground">
-            عرض كامل للأسبوع مع إمكانية إضافة حجز إداري
-          </p>
-        </div>
+        <ScreenHeader
+          title="التقويم"
+          description="عرض كامل للأسبوع مع إمكانية إضافة حجز إداري"
+        />
         <Link
           href={`/book?week=${data.friday}`}
           className="text-sm text-primary hover:underline"

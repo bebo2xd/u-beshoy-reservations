@@ -13,15 +13,21 @@ import {
   LayoutDashboard,
   Lock,
   LogOut,
+  Menu,
   Settings,
   CalendarRange,
-  UserRound,
   Users,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { logoutAction } from "@/lib/actions/admin";
 import { Button } from "@/components/ui/button";
 import { BrandLogo } from "@/components/brand/BrandLogo";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import type { PermissionKey } from "@/lib/permissions";
 
 const STORAGE_KEY = "admin-sidebar-collapsed";
@@ -98,6 +104,135 @@ function initials(name: string) {
   return `${parts[0][0]}${parts[1][0]}`;
 }
 
+function linkActive(pathname: string, href: string) {
+  return href === "/admin" ? pathname === "/admin" : pathname.startsWith(href);
+}
+
+function NavLinks({
+  items,
+  pathname,
+  collapsed = false,
+  onNavigate,
+}: {
+  items: typeof links;
+  pathname: string;
+  collapsed?: boolean;
+  onNavigate?: () => void;
+}) {
+  return (
+    <>
+      {items.map((link) => {
+        const active = linkActive(pathname, link.href);
+        const Icon = link.icon;
+        return (
+          <Link
+            key={link.href}
+            href={link.href}
+            title={link.label}
+            aria-current={active ? "page" : undefined}
+            onClick={onNavigate}
+            className={cn(
+              "flex min-h-12 items-center gap-3 rounded-xl px-3 text-sm font-semibold transition-colors",
+              collapsed && "lg:justify-center lg:px-0",
+              active
+                ? "bg-primary text-primary-foreground"
+                : "text-foreground hover:bg-secondary"
+            )}
+          >
+            <Icon className="h-5 w-5 shrink-0" aria-hidden />
+            <span className={cn(collapsed && "lg:sr-only")}>{link.label}</span>
+          </Link>
+        );
+      })}
+    </>
+  );
+}
+
+function AccountFooter({
+  user,
+  roleLabel,
+  accountActive,
+  collapsed = false,
+  onNavigate,
+}: {
+  user?: {
+    full_name: string;
+    email?: string | null;
+    role: string;
+  } | null;
+  roleLabel: string;
+  accountActive: boolean;
+  collapsed?: boolean;
+  onNavigate?: () => void;
+}) {
+  return (
+    <div
+      className={cn(
+        "flex shrink-0 flex-col gap-1 border-t border-border pt-3",
+        collapsed && "lg:items-center"
+      )}
+    >
+      {user && (
+        <Link
+          href="/admin/account"
+          title={
+            user.email
+              ? `${user.full_name} — ${roleLabel} · ${user.email}`
+              : `${user.full_name} — ${roleLabel}`
+          }
+          aria-current={accountActive ? "page" : undefined}
+          onClick={onNavigate}
+          className={cn(
+            "flex min-h-12 min-w-0 items-center gap-3 rounded-xl px-3 transition-colors hover:bg-secondary",
+            accountActive && "bg-secondary",
+            collapsed && "lg:w-12 lg:justify-center lg:px-0"
+          )}
+        >
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
+            {initials(user.full_name)}
+          </span>
+          <span className={cn("min-w-0 text-right", collapsed && "lg:hidden")}>
+            <span className="block truncate text-sm font-semibold leading-tight">
+              {user.full_name}
+            </span>
+            <span className="block truncate text-xs leading-tight text-muted-foreground">
+              {roleLabel}
+            </span>
+          </span>
+        </Link>
+      )}
+
+      <Link
+        href="/book"
+        title="صفحة الحجز"
+        onClick={onNavigate}
+        className={cn(
+          "inline-flex min-h-12 items-center gap-3 rounded-xl px-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground",
+          collapsed && "lg:w-12 lg:justify-center lg:px-0"
+        )}
+      >
+        <ExternalLink className="h-5 w-5 shrink-0" aria-hidden />
+        <span className={cn(collapsed && "lg:sr-only")}>صفحة الحجز</span>
+      </Link>
+
+      <form action={logoutAction} className={cn(collapsed && "lg:w-12")}>
+        <Button
+          type="submit"
+          variant="ghost"
+          title="تسجيل الخروج"
+          className={cn(
+            "h-12 w-full justify-start gap-3 px-3 text-sm text-muted-foreground hover:bg-tomato-3 hover:text-tomato-9",
+            collapsed && "lg:w-12 lg:justify-center lg:px-0"
+          )}
+        >
+          <LogOut className="h-5 w-5 shrink-0" aria-hidden />
+          <span className={cn(collapsed && "lg:sr-only")}>خروج</span>
+        </Button>
+      </form>
+    </div>
+  );
+}
+
 export function AdminNav({
   permissions = [],
   user,
@@ -112,6 +247,7 @@ export function AdminNav({
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
   const [ready, setReady] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   useEffect(() => {
     try {
@@ -121,6 +257,10 @@ export function AdminNav({
     }
     setReady(true);
   }, []);
+
+  useEffect(() => {
+    setDrawerOpen(false);
+  }, [pathname]);
 
   const visibleLinks = useMemo(
     () => links.filter((link) => canSee(permissions, link.permission)),
@@ -142,139 +282,148 @@ export function AdminNav({
     });
   }
 
+  function closeDrawer() {
+    setDrawerOpen(false);
+  }
+
   return (
-    <aside
-      className={cn(
-        "flex w-full shrink-0 flex-col gap-2 border-b border-border bg-card p-3 lg:h-dvh lg:border-b-0 lg:border-l lg:transition-[width] lg:duration-200",
-        ready && collapsed ? "lg:w-[4.5rem]" : "lg:w-64"
-      )}
-    >
-      <div
-        className={cn(
-          "mb-2 flex items-start gap-2 px-2 py-3",
-          collapsed && "lg:flex-col lg:items-center lg:px-0"
-        )}
-      >
-        <BrandLogo
-          size={collapsed ? 36 : 44}
-          className={cn("mt-0.5 shadow-sm", collapsed && "lg:mt-0")}
-          priority
-        />
-        <div className={cn("min-w-0 flex-1", collapsed && "lg:hidden")}>
-          <p className="text-xs text-muted-foreground">لوحة التحكم</p>
-          <h1 className="text-lg font-bold text-primary">حجوزات الكنيسة</h1>
-        </div>
-        <Button
+    <>
+      <header className="flex shrink-0 items-center gap-2 border-b border-border bg-card px-3 py-2 pt-[max(0.5rem,env(safe-area-inset-top))] lg:hidden">
+        <button
           type="button"
-          variant="ghost"
-          size="icon"
-          className="hidden shrink-0 lg:inline-flex"
-          onClick={toggle}
-          aria-label={collapsed ? "توسيع القائمة" : "طي القائمة"}
-          title={collapsed ? "توسيع القائمة" : "طي القائمة"}
+          className="inline-flex h-11 w-11 items-center justify-center rounded-xl text-foreground transition-colors hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          aria-label="فتح القائمة"
+          aria-expanded={drawerOpen}
+          onClick={() => setDrawerOpen(true)}
         >
-          {collapsed ? (
-            <ChevronLeft className="h-4 w-4" />
-          ) : (
-            <ChevronRight className="h-4 w-4" />
-          )}
-        </Button>
-      </div>
-
-      <nav
-        className={cn(
-          "flex gap-1 overflow-x-auto lg:min-h-0 lg:flex-1 lg:flex-col lg:overflow-y-auto scrollbar-thin",
-          collapsed && "lg:items-center"
-        )}
-      >
-        {visibleLinks.map((link) => {
-          const active =
-            link.href === "/admin"
-              ? pathname === "/admin"
-              : pathname.startsWith(link.href);
-          const Icon = link.icon;
-          return (
-            <Link
-              key={link.href}
-              href={link.href}
-              title={link.label}
-              className={cn(
-                "inline-flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-                collapsed && "lg:justify-center lg:px-2.5",
-                active
-                  ? "bg-primary text-primary-foreground"
-                  : "text-foreground hover:bg-secondary"
-              )}
-            >
-              <Icon className="h-4 w-4 shrink-0" />
-              <span className={cn(collapsed && "lg:hidden")}>{link.label}</span>
-            </Link>
-          );
-        })}
-      </nav>
-
-      <div
-        className={cn(
-          "mt-auto shrink-0 space-y-2 border-t border-border pt-3",
-          collapsed && "lg:flex lg:flex-col lg:items-center"
-        )}
-      >
-        {user && (
-          <Link
-            href="/admin/account"
-            title={`${user.full_name} — تعديل الحساب`}
-            className={cn(
-              "flex items-center gap-3 rounded-2xl border border-border bg-sand-2 p-2.5 transition-colors hover:bg-sand-3",
-              accountActive && "ring-2 ring-ring",
-              collapsed && "lg:justify-center lg:p-2"
-            )}
-          >
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground">
-              {initials(user.full_name)}
+          <Menu className="h-5 w-5" aria-hidden />
+        </button>
+        <Link
+          href="/admin"
+          aria-label="الصفحة الرئيسية للوحة التحكم"
+          className="flex min-w-0 flex-1 items-center gap-2 rounded-xl py-0.5"
+        >
+          <BrandLogo size={36} className="shadow-sm" priority />
+          <span className="min-w-0 flex-1">
+            <span className="block text-xs leading-none text-muted-foreground">
+              لوحة التحكم
             </span>
-            <span className={cn("min-w-0 flex-1", collapsed && "lg:hidden")}>
-              <span className="block truncate text-sm font-bold leading-tight">
-                {user.full_name}
-              </span>
-              <span className="mt-0.5 block text-xs text-sand-11">
-                {roleLabel}
-                {user.email ? ` · ${user.email}` : ""}
-              </span>
-              <span className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-primary">
-                <UserRound className="h-3.5 w-3.5" />
-                تعديل البيانات
-              </span>
+            <span className="block truncate text-base font-bold leading-tight text-primary">
+              حجوزات الكنيسة
+            </span>
+          </span>
+        </Link>
+      </header>
+
+      <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
+        <SheetContent
+          side="right"
+          className="w-[min(88vw,19rem)] max-w-none gap-0 border-l-0 p-0 shadow-2xl"
+        >
+          <SheetDescription className="sr-only">
+            أقسام لوحة التحكم
+          </SheetDescription>
+          <div className="flex items-center gap-3 border-b border-border px-4 pb-4 pe-16 pt-[max(1rem,env(safe-area-inset-top))]">
+          <Link
+            href="/admin"
+            onClick={closeDrawer}
+            aria-label="الصفحة الرئيسية للوحة التحكم"
+            className="flex min-w-0 items-center gap-3"
+          >
+            <BrandLogo size={44} className="shadow-sm" />
+            <span className="min-w-0">
+              <span className="block text-xs text-muted-foreground">لوحة التحكم</span>
+              <SheetTitle className="truncate text-lg font-bold text-primary">
+                حجوزات الكنيسة
+              </SheetTitle>
             </span>
           </Link>
-        )}
+          </div>
+          <nav className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto px-3 py-3">
+            <NavLinks
+              items={visibleLinks}
+              pathname={pathname}
+              onNavigate={closeDrawer}
+            />
+          </nav>
+          <div className="px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+            <AccountFooter
+              user={user}
+              roleLabel={roleLabel}
+              accountActive={accountActive}
+              onNavigate={closeDrawer}
+            />
+          </div>
+        </SheetContent>
+      </Sheet>
 
-        <Link
-          href="/book"
-          title="صفحة الحجز"
+      <aside
+        className={cn(
+          "hidden h-dvh shrink-0 flex-col gap-2 border-l border-border bg-card p-3 lg:flex lg:transition-[width] lg:duration-200",
+          ready && collapsed ? "lg:w-[4.5rem]" : "lg:w-64"
+        )}
+      >
+        <div
           className={cn(
-            "inline-flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-sand-12 transition-colors hover:bg-secondary",
-            collapsed && "lg:justify-center lg:px-2"
+            "mb-1 flex items-start gap-2 px-2 py-2",
+            collapsed && "lg:flex-col lg:items-center lg:px-0"
           )}
         >
-          <ExternalLink className="h-4 w-4 shrink-0" />
-          <span className={cn(collapsed && "lg:hidden")}>صفحة الحجز</span>
-        </Link>
-
-        <form action={logoutAction} className="w-full">
-          <Button
-            type="submit"
-            variant="outline"
+          <Link
+            href="/admin"
+            aria-label="الصفحة الرئيسية للوحة التحكم"
             className={cn(
-              "w-full justify-start gap-2 text-tomato-9 hover:bg-tomato-3 hover:text-tomato-9",
-              collapsed && "lg:justify-center lg:px-2"
+              "flex min-w-0 flex-1 items-start gap-2 rounded-xl",
+              collapsed && "lg:flex-none lg:flex-col lg:items-center lg:px-0"
             )}
-            title="تسجيل الخروج"
           >
-            <LogOut className="h-4 w-4 shrink-0" />
-            <span className={cn(collapsed && "lg:hidden")}>تسجيل الخروج</span>
+            <BrandLogo
+              size={collapsed ? 36 : 44}
+              className={cn("shadow-sm", collapsed && "lg:mt-0")}
+              priority
+            />
+            <span className={cn("min-w-0 flex-1", collapsed && "lg:hidden")}>
+              <span className="block text-xs text-muted-foreground">لوحة التحكم</span>
+              <span className="block text-lg font-bold text-primary">حجوزات الكنيسة</span>
+            </span>
+          </Link>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="hidden shrink-0 lg:inline-flex"
+            onClick={toggle}
+            aria-label={collapsed ? "توسيع القائمة" : "طي القائمة"}
+            title={collapsed ? "توسيع القائمة" : "طي القائمة"}
+          >
+            {collapsed ? (
+              <ChevronLeft className="h-4 w-4" />
+            ) : (
+              <ChevronRight className="h-4 w-4" />
+            )}
           </Button>
-        </form>
-      </div>
-    </aside>
+        </div>
+
+        <nav
+          className={cn(
+            "flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto",
+            collapsed && "lg:items-center"
+          )}
+        >
+          <NavLinks
+            items={visibleLinks}
+            pathname={pathname}
+            collapsed={collapsed}
+          />
+        </nav>
+
+        <AccountFooter
+          user={user}
+          roleLabel={roleLabel}
+          accountActive={accountActive}
+          collapsed={collapsed}
+        />
+      </aside>
+    </>
   );
 }

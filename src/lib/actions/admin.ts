@@ -5,6 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getProfile, requireAdmin as requireAdminSession, requirePermission } from "@/lib/auth/session";
 import type { AppRole } from "@/lib/types";
 import { CUSTOM_FLAG, PERMISSION_KEYS } from "@/lib/permissions";
+import { resolveUiFont } from "@/lib/ui-fonts";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { formatDateTimeArCairo } from "@/lib/dates";
@@ -479,6 +480,7 @@ export async function updateSettings(form: {
   site_title: string;
   week_start_day?: number;
   slot_duration_minutes?: 30 | 60;
+  ui_font?: import("@/lib/ui-fonts").UiFontId;
 }) {
   const auth = await requirePermission("manage_settings");
   if (!auth.ok || !auth.supabase) {
@@ -497,6 +499,7 @@ export async function updateSettings(form: {
   if (form.slot_duration_minutes != null) {
     payload.slot_duration_minutes = form.slot_duration_minutes;
   }
+  if (form.ui_font) payload.ui_font = resolveUiFont(form.ui_font);
 
   let { error } = await auth.supabase.from("settings").update(payload).eq("id", 1);
 
@@ -520,7 +523,27 @@ export async function updateSettings(form: {
     }
   }
 
+  if (
+    error &&
+    form.ui_font &&
+    /ui_font/i.test(error.message)
+  ) {
+    delete payload.ui_font;
+    const retry = await auth.supabase.from("settings").update(payload).eq("id", 1);
+    error = retry.error;
+    if (!error) {
+      revalidatePath("/admin/settings");
+      revalidatePath("/book");
+      return {
+        ok: false as const,
+        error:
+          "باقي الإعدادات اتحفظت، لكن لازم تشغّل migration 0013 في Supabase عشان اختيار الخط",
+      };
+    }
+  }
+
   if (error) return { ok: false as const, error: error.message };
+  revalidatePath("/", "layout");
   revalidatePath("/admin/settings");
   revalidatePath("/book");
   return { ok: true as const };

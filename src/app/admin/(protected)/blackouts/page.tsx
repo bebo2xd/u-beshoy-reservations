@@ -1,5 +1,6 @@
 import { getActiveRooms, getBlackouts, getSettings } from "@/lib/data";
 import { BlackoutsManager } from "@/components/admin/BlackoutsManager";
+import { ScreenHeader } from "@/components/ui/screen-header";
 
 export const dynamic = "force-dynamic";
 
@@ -11,12 +12,10 @@ export default async function BlackoutsPage() {
   ]);
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">الأوقات المقفولة</h1>
-        <p className="text-sm text-muted-foreground">
-          قفل ساعات أو إغلاق أيام كاملة (صوم، أفراح، خماسين…) واجتماع الخدام
-        </p>
-      </div>
+      <ScreenHeader
+        title="الأوقات المقفولة"
+        description="قفل ساعات أو إغلاق أيام كاملة، مثل الصوم والأفراح والخماسين واجتماع الخدام"
+      />
       <BlackoutsManager
         blackouts={blackouts as never}
         rooms={rooms}
