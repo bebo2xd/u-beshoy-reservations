@@ -13,7 +13,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Checkbox } from "@/components/ui/checkbox";
 import { submitBookingRequest } from "@/lib/actions/bookings";
 import { formatDateAr } from "@/lib/dates";
 import { rangeLabel } from "@/lib/constants";
@@ -48,15 +47,10 @@ export function BookingForm({
 }: BookingFormProps) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
-  const [agreed, setAgreed] = useState(false);
   const [honeypot, setHoneypot] = useState("");
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (!agreed) {
-      toast.error("يجب الموافقة على الملاحظات الهامة أولاً");
-      return;
-    }
     const fd = new FormData(e.currentTarget);
     startTransition(async () => {
       const result = await submitBookingRequest({
@@ -132,14 +126,6 @@ export function BookingForm({
             <pre className="whitespace-pre-wrap font-sans text-sm leading-7 text-sand-11">
               {importantNotes}
             </pre>
-            <label className="mt-4 flex items-start gap-3 text-base font-medium">
-              <Checkbox
-                checked={agreed}
-                onCheckedChange={(v) => setAgreed(v === true)}
-                className="mt-0.5 h-6 w-6"
-              />
-              <span>قرأت الملاحظات وأوافق عليها</span>
-            </label>
           </div>
 
           <p className="text-sm font-medium text-sand-11">
@@ -151,7 +137,7 @@ export function BookingForm({
             variant="cta"
             className="w-full"
             size="lg"
-            disabled={pending || !agreed}
+            disabled={pending}
           >
             {pending ? "جاري الإرسال..." : "إرسال طلب الحجز"}
           </Button>
