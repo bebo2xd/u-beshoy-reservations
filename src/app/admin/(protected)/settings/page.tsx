@@ -1,13 +1,29 @@
+import { Suspense } from "react";
 import { getSettings } from "@/lib/data";
 import { SettingsForm } from "@/components/admin/SettingsForm";
 import { mergeNotificationPrefs } from "@/lib/notify/prefs";
 import { listActiveAdmins } from "@/lib/notify/recipients";
 import { ScreenHeader } from "@/components/ui/screen-header";
+import { FormSkeleton } from "@/components/ui/skeleton";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
 
-export default async function SettingsPage() {
+export default function SettingsPage() {
+  return (
+    <div className="space-y-6">
+      <ScreenHeader
+        title="الإعدادات"
+        description="عام، خط الواجهة، تنبيهات، واتساب، وإيميل SMTP"
+      />
+      <Suspense fallback={<FormSkeleton />}>
+        <SettingsBody />
+      </Suspense>
+    </div>
+  );
+}
+
+async function SettingsBody() {
   const settings = await getSettings();
 
   let evolution_url = settings.evolution_url ?? null;
@@ -49,32 +65,26 @@ export default async function SettingsPage() {
   const admins = await listActiveAdmins();
 
   return (
-    <div className="space-y-6">
-      <ScreenHeader
-        title="الإعدادات"
-        description="عام، خط الواجهة، تنبيهات، واتساب، وإيميل SMTP"
-      />
-      <SettingsForm
-        settings={{
-          ...settings,
-          evolution_url,
-          evolution_instance,
-          admin_whatsapp,
-          evolution_api_key: null,
-          has_evolution_api_key,
-          notification_prefs,
-          smtp_host,
-          smtp_port,
-          smtp_secure,
-          smtp_user,
-          smtp_password: null,
-          smtp_from,
-          admin_email,
-          has_smtp_password,
-          notify_admin_ids,
-        }}
-        admins={admins}
-      />
-    </div>
+    <SettingsForm
+      settings={{
+        ...settings,
+        evolution_url,
+        evolution_instance,
+        admin_whatsapp,
+        evolution_api_key: null,
+        has_evolution_api_key,
+        notification_prefs,
+        smtp_host,
+        smtp_port,
+        smtp_secure,
+        smtp_user,
+        smtp_password: null,
+        smtp_from,
+        admin_email,
+        has_smtp_password,
+        notify_admin_ids,
+      }}
+      admins={admins}
+    />
   );
 }

@@ -1,5 +1,7 @@
 import { AdminNav } from "@/components/admin/AdminNav";
 import { getProfile, getUserPermissions } from "@/lib/auth/session";
+import { Suspense } from "react";
+import { AdminPageSkeleton } from "@/components/ui/skeleton";
 
 export default async function ProtectedAdminLayout({
   children,
@@ -26,7 +28,7 @@ export default async function ProtectedAdminLayout({
         }
       />
       <main className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-5 sm:px-6 lg:px-8">
-        {children}
+        <Suspense fallback={<AdminPageSkeleton />}>{children}</Suspense>
       </main>
     </div>
   );

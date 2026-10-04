@@ -81,10 +81,10 @@ export async function getWeekScheduleData(
   const to = dates[dates.length - 1];
 
   const supabase = await createClient();
-  const settings = await getSettings();
 
-  const [roomsRes, schedulesRes, exceptionsRes, blackoutsRes, bookingsRes] =
+  const [settings, roomsRes, schedulesRes, exceptionsRes, blackoutsRes, bookingsRes] =
     await Promise.all([
+      getSettings(),
       supabase
         .from("rooms")
         .select("*")

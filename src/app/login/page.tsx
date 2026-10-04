@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 import { BrandLogo } from "@/components/brand/BrandLogo";
+import { LoginSkeleton } from "@/components/ui/skeleton";
 
 function LoginForm() {
   const searchParams = useSearchParams();
@@ -80,11 +81,7 @@ function LoginForm() {
 export default function LoginPage() {
   return (
     <div className="flex min-h-dvh items-center justify-center bg-background px-5 py-10 pt-[max(2.5rem,env(safe-area-inset-top))] pb-[max(1.5rem,env(safe-area-inset-bottom))]">
-      <Suspense
-        fallback={
-          <p className="text-sm text-muted-foreground">جاري التحميل...</p>
-        }
-      >
+      <Suspense fallback={<LoginSkeleton />}>
         <LoginForm />
       </Suspense>
     </div>

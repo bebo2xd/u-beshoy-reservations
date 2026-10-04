@@ -1,9 +1,11 @@
+import { Suspense } from "react";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { PermissionsManager } from "@/components/admin/PermissionsManager";
 import type { AppRole } from "@/lib/types";
 import { DEFAULT_ROLE_PERMISSIONS } from "@/lib/permissions";
 import { requirePermission } from "@/lib/auth/session";
 import { ScreenHeader } from "@/components/ui/screen-header";
+import { FormSkeleton } from "@/components/ui/skeleton";
 import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
@@ -12,6 +14,20 @@ export default async function PermissionsPage() {
   const auth = await requirePermission("manage_permissions");
   if (!auth.ok) redirect("/admin");
 
+  return (
+    <div className="space-y-6">
+      <ScreenHeader
+        title="الصلاحيات"
+        description="تحكم في صلاحيات دور الأدمن والخادم. صلاحيات خادم معيّن تتعدل من صفحة الخدام."
+      />
+      <Suspense fallback={<FormSkeleton />}>
+        <PermissionsBody />
+      </Suspense>
+    </div>
+  );
+}
+
+async function PermissionsBody() {
   const admin = createAdminClient();
   const { data } = await admin.from("role_permissions").select("role, permission");
 
@@ -32,12 +48,6 @@ export default async function PermissionsPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <ScreenHeader
-        title="الصلاحيات"
-        description="تحكم في صلاحيات دور الأدمن والخادم. صلاحيات خادم معيّن تتعدل من صفحة الخدام."
-      />
-      <PermissionsManager initialRole="servant" initialPermissions={initial} />
-    </div>
+    <PermissionsManager initialRole="servant" initialPermissions={initial} />
   );
 }
