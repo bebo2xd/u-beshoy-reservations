@@ -7,8 +7,12 @@ import { getProfile, requireAdmin, requireAuth, requirePermission } from "@/lib/
 import { notifyBookingDecision, notifyNewBooking } from "@/lib/notify";
 import { formatDateAr, isSlotPast } from "@/lib/dates";
 import { rangeLabel } from "@/lib/constants";
-import { listBookingsPage } from "@/lib/data";
-import type { BookingListStatus } from "@/lib/types";
+import {
+  listBookingIds,
+  listBookingsPage,
+  type BookingListFilters,
+} from "@/lib/data";
+import type { BookingListStatus, BookingStatus } from "@/lib/types";
 import { revalidatePath } from "next/cache";
 
 export async function submitBookingRequest(form: {
@@ -269,4 +273,212 @@ export async function fetchBookingsPageAction(opts: {
   }
   const result = await listBookingsPage(opts);
   return { ok: true as const, ...result };
+}
+
+/** All IDs matching current filters — for “select all results”. */
+export async function fetchBookingIdsAction(opts: BookingListFilters) {
+  const auth = await requireAuth();
+  if (!auth.ok) {
+    return {
+      ok: false as const,
+      error: auth.error ?? "غير مصرح",
+      ids: [] as string[],
+      statuses: {} as Record<string, BookingStatus>,
+      total: 0,
+      capped: false,
+    };
+  }
+  const result = await listBookingIds(opts);
+  return { ok: true as const, ...result };
+}
+
+/**
+ * Bulk approve/reject — only pending rows among the selection are updated.
+ * Already-decided bookings are skipped; overlap conflicts are counted separately.
+ */
+export async function decideBookingsAction(
+  ids: string[],
+  status: "approved" | "rejected"
+) {
+  const auth = await requirePermission("decide_bookings");
+  if (!auth.ok) {
+    return {
+      ok: false as const,
+      error: auth.error ?? "غير مصرح",
+      decided: 0,
+      skipped: 0,
+      conflicts: 0,
+    };
+  }
+
+  const unique = Array.from(
+    new Set(ids.map((id) => id.trim()).filter(Boolean))
+  ).slice(0, 5000);
+
+  if (unique.length === 0) {
+    return {
+      ok: false as const,
+      error: "لم يتم اختيار أي طلب",
+      decided: 0,
+      skipped: 0,
+      conflicts: 0,
+    };
+  }
+
+  let admin = auth.supabase!;
+  try {
+    admin = createAdminClient();
+  } catch {
+    /* use session client */
+  }
+
+  const candidates: Array<{
+    id: string;
+    created_by: string | null;
+    requester_phone: string;
+    service_name: string;
+    booking_date: string;
+    start_hour: number;
+    end_hour: number;
+    tracking_code: string;
+    rooms: { name?: string } | null;
+  }> = [];
+
+  const chunkSize = 100;
+  for (let i = 0; i < unique.length; i += chunkSize) {
+    const chunk = unique.slice(i, i + chunkSize);
+    const { data, error } = await admin
+      .from("bookings")
+      .select("*, rooms(name)")
+      .in("id", chunk)
+      .eq("status", "pending");
+
+    if (error) {
+      console.error("decideBookingsAction fetch", error);
+      return {
+        ok: false as const,
+        error: "تعذر قراءة الطلبات المحددة",
+        decided: 0,
+        skipped: 0,
+        conflicts: 0,
+      };
+    }
+    candidates.push(...((data as typeof candidates) ?? []));
+  }
+
+  const skipped = unique.length - candidates.length;
+  let decided = 0;
+  let conflicts = 0;
+  const notified: typeof candidates = [];
+
+  for (const booking of candidates) {
+    const { error: updateError } = await admin
+      .from("bookings")
+      .update({
+        status,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", booking.id)
+      .eq("status", "pending");
+
+    if (updateError) {
+      if (updateError.code === "23P01") {
+        conflicts += 1;
+        continue;
+      }
+      console.error("decideBookingsAction update", updateError);
+      continue;
+    }
+
+    decided += 1;
+    notified.push(booking);
+  }
+
+  after(async () => {
+    for (const booking of notified) {
+      try {
+        await notifyBookingDecision({
+          id: booking.id,
+          created_by: booking.created_by,
+          requester_phone: booking.requester_phone,
+          service_name: booking.service_name,
+          room_name: booking.rooms?.name ?? "مكان",
+          date_label: formatDateAr(booking.booking_date),
+          time_label: rangeLabel(booking.start_hour, booking.end_hour),
+          status,
+          tracking_code: booking.tracking_code,
+        });
+      } catch (e) {
+        console.error("Bulk decision notify failed", e);
+      }
+    }
+  });
+
+  revalidatePath("/admin");
+  revalidatePath("/book");
+  revalidatePath("/my-bookings");
+
+  if (decided === 0 && conflicts === 0) {
+    return {
+      ok: false as const,
+      error: "مفيش طلبات معلقة ضمن التحديد",
+      decided: 0,
+      skipped,
+      conflicts: 0,
+    };
+  }
+
+  return { ok: true as const, decided, skipped, conflicts };
+}
+
+/** Hard-delete one or more bookings from the admin list. */
+export async function deleteBookingsAction(ids: string[]) {
+  const auth = await requirePermission("decide_bookings");
+  if (!auth.ok) {
+    return { ok: false as const, error: auth.error ?? "غير مصرح", deleted: 0 };
+  }
+
+  const unique = Array.from(
+    new Set(ids.map((id) => id.trim()).filter(Boolean))
+  ).slice(0, 5000);
+
+  if (unique.length === 0) {
+    return { ok: false as const, error: "لم يتم اختيار أي طلب", deleted: 0 };
+  }
+
+  let admin = auth.supabase!;
+  try {
+    admin = createAdminClient();
+  } catch {
+    /* use session client */
+  }
+
+  let deleted = 0;
+  const chunkSize = 100;
+  for (let i = 0; i < unique.length; i += chunkSize) {
+    const chunk = unique.slice(i, i + chunkSize);
+    const { data, error } = await admin
+      .from("bookings")
+      .delete()
+      .in("id", chunk)
+      .select("id");
+
+    if (error) {
+      console.error("deleteBookingsAction", error);
+      return {
+        ok: false as const,
+        error:
+          deleted > 0
+            ? `اتحذف ${deleted} طلب وبعدين حصل خطأ`
+            : "تعذر حذف الطلبات",
+        deleted,
+      };
+    }
+    deleted += data?.length ?? 0;
+  }
+
+  revalidatePath("/admin");
+  revalidatePath("/book");
+  revalidatePath("/my-bookings");
+  return { ok: true as const, deleted };
 }

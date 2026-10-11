@@ -158,12 +158,59 @@ export async function getRecentBookings(limit = 50): Promise<Booking[]> {
 }
 
 const BOOKING_PAGE_SIZES = [10, 20, 50, 100] as const;
+const BOOKING_ID_PAGE = 1000;
+const BOOKING_IDS_MAX = 5000;
 
 export type { BookingListStatus };
+
+export type BookingListFilters = {
+  q?: string;
+  status?: BookingListStatus;
+  roomId?: string;
+};
 
 export function normalizeBookingPageSize(value?: number | string): number {
   const n = Number(value);
   return (BOOKING_PAGE_SIZES as readonly number[]).includes(n) ? n : 20;
+}
+
+function normalizeBookingFilters(opts: BookingListFilters) {
+  return {
+    status: opts.status ?? ("all" as BookingListStatus),
+    roomId: opts.roomId?.trim() || "",
+    q: (opts.q ?? "")
+      .replace(/[%_,."'\\]/g, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 80),
+  };
+}
+
+function applyBookingListFilters<
+  T extends {
+    eq: (column: string, value: string) => T;
+    or: (filters: string) => T;
+  },
+>(query: T, opts: ReturnType<typeof normalizeBookingFilters>): T {
+  let next = query;
+  if (opts.status !== "all") {
+    next = next.eq("status", opts.status);
+  }
+  if (opts.roomId) {
+    next = next.eq("room_id", opts.roomId);
+  }
+  if (opts.q) {
+    const pattern = `"%${opts.q}%"`;
+    next = next.or(
+      [
+        `service_name.ilike.${pattern}`,
+        `requester_name.ilike.${pattern}`,
+        `requester_phone.ilike.${pattern}`,
+        `tracking_code.ilike.${pattern}`,
+      ].join(",")
+    );
+  }
+  return next;
 }
 
 /** Server-side search / filter / pagination for admin booking history. */
@@ -181,13 +228,7 @@ export async function listBookingsPage(opts: {
 }> {
   const pageSize = normalizeBookingPageSize(opts.pageSize);
   const page = Math.max(1, Number(opts.page) || 1);
-  const status = opts.status ?? "all";
-  const roomId = opts.roomId?.trim() || "";
-  const q = (opts.q ?? "")
-    .replace(/[%_,."'\\]/g, " ")
-    .replace(/\s+/g, " ")
-    .trim()
-    .slice(0, 80);
+  const filters = normalizeBookingFilters(opts);
 
   const supabase = await createClient();
   let query = supabase
@@ -195,23 +236,7 @@ export async function listBookingsPage(opts: {
     .select("*, rooms(*)", { count: "exact" })
     .order("created_at", { ascending: false });
 
-  if (status !== "all") {
-    query = query.eq("status", status);
-  }
-  if (roomId) {
-    query = query.eq("room_id", roomId);
-  }
-  if (q) {
-    const pattern = `"%${q}%"`;
-    query = query.or(
-      [
-        `service_name.ilike.${pattern}`,
-        `requester_name.ilike.${pattern}`,
-        `requester_phone.ilike.${pattern}`,
-        `tracking_code.ilike.${pattern}`,
-      ].join(",")
-    );
-  }
+  query = applyBookingListFilters(query, filters);
 
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
@@ -227,6 +252,55 @@ export async function listBookingsPage(opts: {
     total: count ?? 0,
     page,
     pageSize,
+  };
+}
+
+/** All booking IDs (+ status) matching the current admin list filters (capped). */
+export async function listBookingIds(
+  opts: BookingListFilters
+): Promise<{
+  ids: string[];
+  statuses: Record<string, BookingStatus>;
+  total: number;
+  capped: boolean;
+}> {
+  const filters = normalizeBookingFilters(opts);
+  const supabase = await createClient();
+  const ids: string[] = [];
+  const statuses: Record<string, BookingStatus> = {};
+  let from = 0;
+  let total = 0;
+
+  while (ids.length < BOOKING_IDS_MAX) {
+    const to = Math.min(from + BOOKING_ID_PAGE, BOOKING_IDS_MAX) - 1;
+    let query = supabase
+      .from("bookings")
+      .select("id, status", { count: from === 0 ? "exact" : undefined })
+      .order("created_at", { ascending: false });
+
+    query = applyBookingListFilters(query, filters);
+
+    const { data, count, error } = await query.range(from, to);
+    if (error) {
+      console.error("listBookingIds", error);
+      return { ids, statuses, total: total || ids.length, capped: false };
+    }
+
+    if (from === 0) total = count ?? 0;
+    const batch = (data as { id: string; status: BookingStatus }[]) ?? [];
+    for (const row of batch) {
+      ids.push(row.id);
+      statuses[row.id] = row.status;
+    }
+    if (batch.length < BOOKING_ID_PAGE || ids.length >= total) break;
+    from += BOOKING_ID_PAGE;
+  }
+
+  return {
+    ids,
+    statuses,
+    total,
+    capped: total > ids.length,
   };
 }
 

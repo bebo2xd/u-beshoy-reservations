@@ -8,9 +8,28 @@ import {
   useState,
   useTransition,
 } from "react";
-import { Hash, Phone, Search, UserRound, X } from "lucide-react";
+import {
+  Check,
+  Hash,
+  Phone,
+  Search,
+  Trash2,
+  UserRound,
+  X,
+} from "lucide-react";
+import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -20,7 +39,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { PaginationBar } from "@/components/admin/PaginationBar";
-import { fetchBookingsPageAction } from "@/lib/actions/bookings";
+import {
+  decideBookingsAction,
+  deleteBookingsAction,
+  fetchBookingIdsAction,
+  fetchBookingsPageAction,
+} from "@/lib/actions/bookings";
 import { formatDateAr } from "@/lib/dates";
 import { rangeLabel } from "@/lib/constants";
 import { cn } from "@/lib/utils";
@@ -112,14 +136,123 @@ export function RecentBookingsPanel({
   const [search, setSearch] = useState(initialQ);
   const deferredSearch = useDeferredValue(search);
   const [pending, startTransition] = useTransition();
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [statusById, setStatusById] = useState<Record<string, BookingStatus>>(
+    () => Object.fromEntries(initialItems.map((b) => [b.id, b.status]))
+  );
+  const [confirmAction, setConfirmAction] = useState<
+    null | "delete" | "approved" | "rejected"
+  >(null);
   const requestId = useRef(0);
   const skipSearchFetch = useRef(true);
+
+  const pageIds = useMemo(() => items.map((b) => b.id), [items]);
+  const allPageSelected =
+    pageIds.length > 0 && pageIds.every((id) => selected.has(id));
+  const somePageSelected =
+    pageIds.some((id) => selected.has(id)) && !allPageSelected;
+  const selectedCount = selected.size;
+  const allResultsSelected =
+    total > 0 && selectedCount >= total && selectedCount > 0;
+
+  const pendingSelectedCount = useMemo(() => {
+    let count = 0;
+    for (const id of selected) {
+      if (statusById[id] === "pending") count += 1;
+    }
+    return count;
+  }, [selected, statusById]);
+
+  const knownSelectedCount = useMemo(() => {
+    let count = 0;
+    for (const id of selected) {
+      if (statusById[id]) count += 1;
+    }
+    return count;
+  }, [selected, statusById]);
+
+  function mergeStatuses(next: Record<string, BookingStatus>) {
+    setStatusById((prev) => ({ ...prev, ...next }));
+  }
+
+  function clearSelection() {
+    setSelected(new Set());
+  }
+
+  useEffect(() => {
+    mergeStatuses(
+      Object.fromEntries(items.map((b) => [b.id, b.status]))
+    );
+  }, [items]);
+
+  function toggleOne(id: string, checked: boolean) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (checked) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  }
+
+  function toggleAllPage(checked: boolean) {
+    if (checked) {
+      setSelected((prev) => {
+        const next = new Set(prev);
+        for (const id of pageIds) next.add(id);
+        return next;
+      });
+      return;
+    }
+
+    // Unchecking while “all results” (or any off-page) is selected clears everything.
+    const pageIdSet = new Set(pageIds);
+    const hasOffPage = Array.from(selected).some((id) => !pageIdSet.has(id));
+    if (hasOffPage || allResultsSelected) {
+      clearSelection();
+      return;
+    }
+
+    setSelected((prev) => {
+      const next = new Set(prev);
+      for (const id of pageIds) next.delete(id);
+      return next;
+    });
+  }
+
+  function selectAllResults() {
+    const current = queryRef.current;
+    startTransition(async () => {
+      const res = await fetchBookingIdsAction({
+        q: current.q,
+        status: current.status,
+        roomId: current.roomId,
+      });
+      if (!res.ok) {
+        toast.error(res.error);
+        return;
+      }
+      setSelected(new Set(res.ids));
+      mergeStatuses(res.statuses);
+      if (res.capped) {
+        toast.message(
+          `اتحدد أول ${res.ids.length} من ${res.total} نتيجة — الحد الأقصى للتحديد الجماعي`
+        );
+      } else {
+        toast.success(
+          res.ids.length === 1
+            ? "اتحدد طلب واحد"
+            : `اتحدد كل النتائج (${res.ids.length})`
+        );
+      }
+    });
+  }
 
   function applyQuery(patch: Partial<QueryState>) {
     const next: QueryState = { ...queryRef.current, ...patch };
     queryRef.current = next;
     setQuery(next);
     syncUrl(next);
+    clearSelection();
 
     const id = ++requestId.current;
     startTransition(async () => {
@@ -149,6 +282,92 @@ export function RecentBookingsPanel({
 
       setItems(res.items);
       setTotal(res.total);
+    });
+  }
+
+  function reloadCurrentPage() {
+    const current = queryRef.current;
+    const id = ++requestId.current;
+    startTransition(async () => {
+      let res = await fetchBookingsPageAction({
+        q: current.q,
+        status: current.status,
+        roomId: current.roomId,
+        page: current.page,
+        pageSize: current.pageSize,
+      });
+      if (id !== requestId.current || !res.ok) return;
+
+      if (res.items.length === 0 && res.total > 0 && current.page > 1) {
+        const clamped = { ...current, page: 1 };
+        queryRef.current = clamped;
+        setQuery(clamped);
+        syncUrl(clamped);
+        res = await fetchBookingsPageAction({
+          q: clamped.q,
+          status: clamped.status,
+          roomId: clamped.roomId,
+          page: 1,
+          pageSize: clamped.pageSize,
+        });
+        if (id !== requestId.current || !res.ok) return;
+      }
+
+      setItems(res.items);
+      setTotal(res.total);
+    });
+  }
+
+  function runConfirmedAction() {
+    const ids = Array.from(selected);
+    if (!confirmAction || ids.length === 0) return;
+
+    if (confirmAction === "delete") {
+      startTransition(async () => {
+        const res = await deleteBookingsAction(ids);
+        if (!res.ok) {
+          toast.error(res.error);
+          return;
+        }
+        toast.success(
+          res.deleted === 1
+            ? "تم حذف طلب واحد"
+            : `تم حذف ${res.deleted} طلبات`
+        );
+        setConfirmAction(null);
+        clearSelection();
+        reloadCurrentPage();
+      });
+      return;
+    }
+
+    const decision = confirmAction;
+    startTransition(async () => {
+      const res = await decideBookingsAction(ids, decision);
+      if (!res.ok) {
+        toast.error(res.error);
+        return;
+      }
+
+      const parts = [
+        decision === "approved"
+          ? res.decided === 1
+            ? "اتقبل طلب واحد"
+            : `اتقبل ${res.decided} طلبات`
+          : res.decided === 1
+            ? "اترفض طلب واحد"
+            : `اترفض ${res.decided} طلبات`,
+      ];
+      if (res.skipped > 0) {
+        parts.push(`واتجاوز ${res.skipped} مش معلق`);
+      }
+      if (res.conflicts > 0) {
+        parts.push(`و${res.conflicts} فيهم تعارض`);
+      }
+      toast.success(parts.join(" — "));
+      setConfirmAction(null);
+      clearSelection();
+      reloadCurrentPage();
     });
   }
 
@@ -307,6 +526,27 @@ export function RecentBookingsPanel({
           </div>
         </div>
 
+        {items.length > 0 ? (
+          <div className="flex items-center gap-3 border-b border-border bg-sand-2/40 px-4 py-2.5 sm:px-5">
+            <Checkbox
+              checked={
+                allPageSelected
+                  ? true
+                  : somePageSelected
+                    ? "indeterminate"
+                    : false
+              }
+              onCheckedChange={(v) => toggleAllPage(v === true)}
+              aria-label="تحديد كل الطلبات في الصفحة"
+            />
+            <span className="text-sm font-medium text-sand-11">
+              {allPageSelected
+                ? `محدد ${pageIds.length} في الصفحة`
+                : "تحديد الكل في الصفحة"}
+            </span>
+          </div>
+        ) : null}
+
         <CardContent
           className={cn(
             "relative divide-y divide-border p-0 transition-opacity duration-150",
@@ -314,60 +554,79 @@ export function RecentBookingsPanel({
           )}
           aria-busy={pending}
         >
-          {items.map((b) => (
-            <div
-              key={b.id}
-              className="flex flex-wrap items-start justify-between gap-3 px-4 py-3.5 text-sm transition-colors hover:bg-sand-2/70 sm:px-5"
-            >
-              <div className="min-w-0 flex-1 space-y-1.5">
-                <div className="flex flex-wrap items-center gap-2">
-                  <p className="font-bold tracking-tight text-foreground">
-                    {b.service_name}
-                  </p>
-                  {b.rooms?.name ? (
-                    <span className="inline-flex items-center gap-1.5 rounded-lg bg-sand-3 px-2 py-0.5 text-xs font-semibold text-sand-11">
+          {items.map((b) => {
+            const isChecked = selected.has(b.id);
+            return (
+              <div
+                key={b.id}
+                className={cn(
+                  "flex items-start gap-3 px-4 py-3.5 text-sm transition-colors sm:px-5",
+                  isChecked ? "bg-primary/5" : "hover:bg-sand-2/70"
+                )}
+              >
+                <Checkbox
+                  className="mt-1"
+                  checked={isChecked}
+                  onCheckedChange={(v) => toggleOne(b.id, v === true)}
+                  aria-label={`تحديد طلب ${b.service_name}`}
+                />
+                <div className="flex min-w-0 flex-1 flex-wrap items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1 space-y-1.5">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="font-bold tracking-tight text-foreground">
+                        {b.service_name}
+                      </p>
+                      {b.rooms?.name ? (
+                        <span className="inline-flex items-center gap-1.5 rounded-lg bg-sand-3 px-2 py-0.5 text-xs font-semibold text-sand-11">
+                          <span
+                            className="h-2 w-2 rounded-full"
+                            style={{
+                              backgroundColor: b.rooms.color ?? "#12A594",
+                            }}
+                            aria-hidden
+                          />
+                          {b.rooms.name}
+                        </span>
+                      ) : null}
+                    </div>
+                    <p className="text-muted-foreground">
+                      {formatDateAr(b.booking_date)}
+                      <span className="mx-1.5 text-sand-8">·</span>
+                      <span className="font-semibold text-foreground/80">
+                        {rangeLabel(b.start_hour, b.end_hour)}
+                      </span>
+                    </p>
+                    <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-sand-11">
+                      <span className="inline-flex items-center gap-1.5">
+                        <UserRound
+                          className="h-3.5 w-3.5 shrink-0"
+                          aria-hidden
+                        />
+                        {b.requester_name}
+                      </span>
+                      <a
+                        href={`tel:${b.requester_phone.replace(/\D/g, "")}`}
+                        className="inline-flex items-center gap-1.5 rounded-md transition-colors hover:text-primary hover:underline"
+                        dir="ltr"
+                        aria-label={`اتصال بـ ${b.requester_phone}`}
+                      >
+                        <Phone className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                        {b.requester_phone}
+                      </a>
                       <span
-                        className="h-2 w-2 rounded-full"
-                        style={{ backgroundColor: b.rooms.color ?? "#12A594" }}
-                        aria-hidden
-                      />
-                      {b.rooms.name}
-                    </span>
-                  ) : null}
-                </div>
-                <p className="text-muted-foreground">
-                  {formatDateAr(b.booking_date)}
-                  <span className="mx-1.5 text-sand-8">·</span>
-                  <span className="font-semibold text-foreground/80">
-                    {rangeLabel(b.start_hour, b.end_hour)}
-                  </span>
-                </p>
-                <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-sand-11">
-                  <span className="inline-flex items-center gap-1.5">
-                    <UserRound className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                    {b.requester_name}
-                  </span>
-                  <a
-                    href={`tel:${b.requester_phone.replace(/\D/g, "")}`}
-                    className="inline-flex items-center gap-1.5 rounded-md transition-colors hover:text-primary hover:underline"
-                    dir="ltr"
-                    aria-label={`اتصال بـ ${b.requester_phone}`}
-                  >
-                    <Phone className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                    {b.requester_phone}
-                  </a>
-                  <span
-                    className="inline-flex items-center gap-1.5 font-mono"
-                    dir="ltr"
-                  >
-                    <Hash className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                    {b.tracking_code}
-                  </span>
+                        className="inline-flex items-center gap-1.5 font-mono"
+                        dir="ltr"
+                      >
+                        <Hash className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                        {b.tracking_code}
+                      </span>
+                    </div>
+                  </div>
+                  <StatusBadge status={b.status} />
                 </div>
               </div>
-              <StatusBadge status={b.status} />
-            </div>
-          ))}
+            );
+          })}
 
           {items.length === 0 ? (
             <div className="px-5 py-12 text-center">
@@ -406,6 +665,185 @@ export function RecentBookingsPanel({
           />
         ) : null}
       </Card>
+
+      {selectedCount > 0 ? (
+        <div className="sticky bottom-3 z-20 mx-auto flex w-full max-w-3xl flex-col gap-3 rounded-2xl border border-border bg-card/95 px-4 py-3 shadow-lg backdrop-blur-md animate-bar-in sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <p className="text-sm font-bold text-foreground">
+              محدد{" "}
+              <span className="tabular-nums text-primary">{selectedCount}</span>{" "}
+              طلب
+              {knownSelectedCount > 0 ? (
+                <>
+                  <span className="mx-1.5 text-sand-8">·</span>
+                  <span className="font-semibold text-amber-11 tabular-nums">
+                    {pendingSelectedCount}
+                  </span>{" "}
+                  <span className="font-medium text-muted-foreground">معلق</span>
+                </>
+              ) : null}
+            </p>
+            <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1">
+              {!allResultsSelected ? (
+                <button
+                  type="button"
+                  disabled={pending || total === 0}
+                  onClick={selectAllResults}
+                  className="text-xs font-semibold text-primary underline-offset-2 hover:underline disabled:opacity-50"
+                >
+                  تحديد الكل ({total})
+                </button>
+              ) : (
+                <span className="text-xs font-semibold text-primary">
+                  كل النتائج محددة
+                </span>
+              )}
+              <button
+                type="button"
+                onClick={clearSelection}
+                className="text-xs font-semibold text-sand-11 underline-offset-2 hover:text-foreground hover:underline"
+              >
+                إلغاء التحديد
+              </button>
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              variant="success"
+              size="sm"
+              disabled={pending || pendingSelectedCount === 0}
+              title={
+                pendingSelectedCount === 0
+                  ? "مفيش طلبات معلقة ضمن التحديد"
+                  : `قبول ${pendingSelectedCount} طلب معلق`
+              }
+              onClick={() => setConfirmAction("approved")}
+              className="gap-1.5"
+            >
+              <Check className="h-4 w-4" aria-hidden />
+              قبول
+              {pendingSelectedCount > 0 ? (
+                <span className="tabular-nums opacity-90">
+                  ({pendingSelectedCount})
+                </span>
+              ) : null}
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              disabled={pending || pendingSelectedCount === 0}
+              title={
+                pendingSelectedCount === 0
+                  ? "مفيش طلبات معلقة ضمن التحديد"
+                  : `رفض ${pendingSelectedCount} طلب معلق`
+              }
+              onClick={() => setConfirmAction("rejected")}
+              className="gap-1.5"
+            >
+              <X className="h-4 w-4" aria-hidden />
+              رفض
+              {pendingSelectedCount > 0 ? (
+                <span className="tabular-nums opacity-90">
+                  ({pendingSelectedCount})
+                </span>
+              ) : null}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={pending}
+              onClick={() => setConfirmAction("delete")}
+              className="gap-1.5 border-tomato-9/40 text-tomato-9 hover:bg-tomato-3"
+            >
+              <Trash2 className="h-4 w-4" aria-hidden />
+              حذف
+            </Button>
+          </div>
+        </div>
+      ) : null}
+
+      <Dialog
+        open={confirmAction !== null}
+        onOpenChange={(open) => {
+          if (!open) setConfirmAction(null);
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {confirmAction === "delete"
+                ? "تأكيد الحذف"
+                : confirmAction === "approved"
+                  ? "تأكيد القبول"
+                  : "تأكيد الرفض"}
+            </DialogTitle>
+            <DialogDescription>
+              {confirmAction === "delete" ? (
+                <>
+                  هيتشال{" "}
+                  <span className="font-bold text-foreground tabular-nums">
+                    {selectedCount}
+                  </span>{" "}
+                  طلب نهائيًا ومش هيرجعوا. متأكد؟
+                </>
+              ) : (
+                <>
+                  هيتم{" "}
+                  {confirmAction === "approved" ? "قبول" : "رفض"}{" "}
+                  <span className="font-bold text-foreground tabular-nums">
+                    {pendingSelectedCount}
+                  </span>{" "}
+                  طلب معلق فقط.
+                  {selectedCount > pendingSelectedCount ? (
+                    <>
+                      {" "}
+                      و{" "}
+                      <span className="font-bold text-foreground tabular-nums">
+                        {selectedCount - pendingSelectedCount}
+                      </span>{" "}
+                      مش معلقين هيتجاهلوا.
+                    </>
+                  ) : null}
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:justify-start">
+            <Button
+              variant="outline"
+              disabled={pending}
+              onClick={() => setConfirmAction(null)}
+            >
+              رجوع
+            </Button>
+            <Button
+              variant={
+                confirmAction === "approved" ? "success" : "destructive"
+              }
+              disabled={pending}
+              onClick={runConfirmedAction}
+              className="gap-2"
+            >
+              {confirmAction === "delete" ? (
+                <>
+                  <Trash2 className="h-4 w-4" aria-hidden />
+                  احذف نهائيًا
+                </>
+              ) : confirmAction === "approved" ? (
+                <>
+                  <Check className="h-4 w-4" aria-hidden />
+                  قبول المعلق
+                </>
+              ) : (
+                <>
+                  <X className="h-4 w-4" aria-hidden />
+                  رفض المعلق
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </section>
   );
 }
