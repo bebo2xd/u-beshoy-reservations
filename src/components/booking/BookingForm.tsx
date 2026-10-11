@@ -121,12 +121,14 @@ export function BookingForm({
             <Textarea id="notes" name="notes" placeholder="أي تفاصيل إضافية" />
           </div>
 
-          <div className="rounded-2xl border border-border bg-sand-2 p-4">
-            <p className="mb-2 text-base font-bold text-tomato-9">ملاحظات هامة</p>
-            <pre className="whitespace-pre-wrap font-sans text-sm leading-7 text-sand-11">
-              {importantNotes}
-            </pre>
-          </div>
+          {importantNotes.trim() ? (
+            <div className="rounded-2xl border border-border bg-sand-2 p-4">
+              <p className="mb-2 text-base font-bold text-tomato-9">ملاحظات هامة</p>
+              <pre className="whitespace-pre-wrap font-sans text-sm leading-7 text-sand-11">
+                {importantNotes}
+              </pre>
+            </div>
+          ) : null}
 
           <p className="text-sm font-medium text-sand-11">
             الطلب يحتاج موافقة الإدارة قبل تأكيد الحجز.

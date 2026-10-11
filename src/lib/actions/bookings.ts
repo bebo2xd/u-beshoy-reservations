@@ -40,6 +40,13 @@ export async function submitBookingRequest(form: {
 
   if (error) {
     console.error(error);
+    if (/smallint|numeric|22P02/i.test(error.message)) {
+      return {
+        ok: false as const,
+        error:
+          "إعدادات نصف الساعة غير مكتملة في قاعدة البيانات. تواصل مع الإدارة",
+      };
+    }
     return { ok: false as const, error: "حدث خطأ أثناء إرسال الطلب" };
   }
 

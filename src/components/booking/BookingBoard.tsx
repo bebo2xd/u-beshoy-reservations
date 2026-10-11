@@ -2,11 +2,10 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, ChevronRight } from "lucide-react";
 import { WeekGrid, Legend } from "@/components/schedule/WeekGrid";
 import { DayView } from "@/components/schedule/DayView";
 import { BookingForm } from "@/components/booking/BookingForm";
-import { WeekPicker } from "@/components/booking/WeekPicker";
+import { BookingDatePicker } from "@/components/booking/BookingDatePicker";
 import { Button } from "@/components/ui/button";
 import { hoursList, selectionFromHours } from "@/lib/availability";
 import { rangeLabel, slotStepHours } from "@/lib/constants";
@@ -25,8 +24,20 @@ interface BookingBoardProps {
   occupancy: OccupancyBlock[];
   settings: AppSettings;
   weekStart: string;
+  initialDate?: string;
   requesterName: string;
   requesterPhone: string;
+}
+
+function resolveActiveDate(
+  days: WeekDay[],
+  preferred?: string
+): string {
+  const today = todayCairo();
+  if (preferred && days.some((d) => d.date === preferred)) return preferred;
+  if (days.some((d) => d.date === today)) return today;
+  const upcoming = days.find((d) => d.date >= today);
+  return upcoming?.date ?? days[0]?.date ?? today;
 }
 
 export function BookingBoard({
@@ -35,6 +46,7 @@ export function BookingBoard({
   occupancy,
   settings,
   weekStart,
+  initialDate,
   requesterName,
   requesterPhone,
 }: BookingBoardProps) {
@@ -44,25 +56,25 @@ export function BookingBoard({
   const step = useMemo(
     () => slotStepHours(settings.slot_duration_minutes ?? 60),
     [settings.slot_duration_minutes]
-  );  const [activeDate, setActiveDate] = useState(() => {
-    const today = todayCairo();
-    if (days.some((d) => d.date === today)) return today;
-    const upcoming = days.find((d) => d.date >= today);
-    return upcoming?.date ?? days[0]?.date ?? "";
-  });
+  );
 
-  // عند تغيير الأسبوع، رجّع اليوم الحالي لو موجود في الأسبوع
+  const today = todayCairo();
+  const maxDate = addCalendarDays(
+    today,
+    (settings.max_weeks_ahead ?? 4) * 7
+  );
+
+  const [activeDate, setActiveDate] = useState(() =>
+    resolveActiveDate(days, initialDate)
+  );
+
   const daysKey = days.map((d) => d.date).join(",");
   const [prevDaysKey, setPrevDaysKey] = useState(daysKey);
   if (daysKey !== prevDaysKey) {
     setPrevDaysKey(daysKey);
-    const today = todayCairo();
-    if (days.some((d) => d.date === today)) setActiveDate(today);
-    else {
-      const upcoming = days.find((d) => d.date >= today);
-      setActiveDate(upcoming?.date ?? days[0]?.date ?? "");
-    }
+    setActiveDate(resolveActiveDate(days, initialDate ?? activeDate));
   }
+
   const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedHours, setSelectedHours] = useState<number[]>([]);
@@ -108,52 +120,33 @@ export function BookingBoard({
     setSelectedHours([]);
   }
 
-  function goWeek(delta: number) {
-    const next = addCalendarDays(weekStart, delta * 7);
-    goToFriday(getWeekStartFriday(next));
-  }
-
-  function goToFriday(friday: string) {
+  function goToDate(date: string) {
+    const clamped =
+      date < today ? today : date > maxDate ? maxDate : date;
+    setActiveDate(clamped);
+    const friday = getWeekStartFriday(clamped);
     if (friday === weekStart) return;
     startNav(() => {
-      router.push(`/book?week=${friday}`);
+      router.push(`/book?week=${friday}&date=${clamped}`);
     });
   }
 
   return (
-    <div className={`space-y-5 ${navigating ? "opacity-60 transition-opacity" : ""}`}>
+    <div
+      className={`space-y-5 ${navigating ? "opacity-60 transition-opacity" : ""}`}
+    >
       <p className="text-sm leading-relaxed text-muted-foreground">
-        اضغط الساعات المتاحة ورا بعض، ثم «متابعة الحجز».
+        اختَر التاريخ، بعدين اضغط الساعات المتاحة ورا بعض، ثم «متابعة الحجز».
       </p>
 
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="icon"
-            className="h-12 w-12 rounded-xl"
-            onClick={() => goWeek(-1)}
-            aria-label="الأسبوع السابق"
-            disabled={navigating}
-          >
-            <ChevronRight className="h-5 w-5" />
-          </Button>
-          <WeekPicker
-            weekStart={weekStart}
-            onSelectWeek={goToFriday}
-            disabled={navigating}
-          />
-          <Button
-            variant="outline"
-            size="icon"
-            className="h-12 w-12 rounded-xl"
-            onClick={() => goWeek(1)}
-            aria-label="الأسبوع التالي"
-            disabled={navigating}
-          >
-            <ChevronLeft className="h-5 w-5" />
-          </Button>
-        </div>
+        <BookingDatePicker
+          value={activeDate || days[0]?.date || today}
+          onChange={goToDate}
+          minDate={today}
+          maxDate={maxDate}
+          disabled={navigating}
+        />
         <div className="hidden lg:block">
           <Legend />
         </div>
@@ -176,7 +169,6 @@ export function BookingBoard({
         <DayView
           days={days}
           activeDate={activeDate || days[0]?.date}
-          onChangeDate={setActiveDate}
           rooms={rooms}
           hours={hours}
           occupancy={occupancy}
@@ -184,6 +176,7 @@ export function BookingBoard({
           selectedDate={selectedDate}
           selectedHours={selectedHours}
           onSelectSlot={handleSelectSlot}
+          showDayStrip={false}
         />
       </div>
 
@@ -191,20 +184,30 @@ export function BookingBoard({
         <div className="fixed inset-x-0 z-30 animate-bar-in border-t border-border bg-card/95 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-[0_-8px_30px_rgba(15,23,42,0.08)] backdrop-blur-md bottom-[calc(4rem+env(safe-area-inset-bottom))] lg:bottom-0 lg:pb-4">
           <div className="mx-auto flex max-w-5xl flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="text-base leading-relaxed">
-              <span className="font-bold text-lg">{selectedRoom.name}</span>
+              <span className="text-lg font-bold">{selectedRoom.name}</span>
               <div className="mt-0.5 text-sand-11">
                 {formatDateAr(selectedDate)}
                 <span className="mx-2 text-sand-8">·</span>
-                <span className="font-bold text-primary text-lg">
+                <span className="text-lg font-bold text-primary">
                   {rangeLabel(selection.start, selection.end)}
                 </span>
               </div>
             </div>
             <div className="flex gap-2">
-              <Button variant="outline" size="lg" className="flex-1 sm:flex-none" onClick={clearSelection}>
+              <Button
+                variant="outline"
+                size="lg"
+                className="flex-1 sm:flex-none"
+                onClick={clearSelection}
+              >
                 إلغاء
               </Button>
-              <Button variant="cta" size="lg" className="flex-1 sm:flex-none text-base" onClick={() => setFormOpen(true)}>
+              <Button
+                variant="cta"
+                size="lg"
+                className="flex-1 text-base sm:flex-none"
+                onClick={() => setFormOpen(true)}
+              >
                 متابعة الحجز
               </Button>
             </div>

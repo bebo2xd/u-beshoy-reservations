@@ -14,7 +14,7 @@ export const dynamic = "force-dynamic";
 export default async function BookPage({
   searchParams,
 }: {
-  searchParams: Promise<{ week?: string }>;
+  searchParams: Promise<{ week?: string; date?: string }>;
 }) {
   const profile = await getProfile();
   if (!profile) redirect("/login?next=/book");
@@ -26,9 +26,8 @@ export default async function BookPage({
   ]);
   const { data: permissionsHasAdmin } = await supabase.rpc("is_admin");
 
-  const week = params.week
-    ? getWeekStartFriday(params.week)
-    : getWeekStartFriday(todayCairo());
+  const preferredDate = params.date || params.week || todayCairo();
+  const week = getWeekStartFriday(preferredDate);
 
   return (
     <MemberShell
@@ -36,8 +35,12 @@ export default async function BookPage({
       subtitle={`مرحباً، ${profile.full_name}`}
       showAdmin={Boolean(permissionsHasAdmin)}
     >
-      <Suspense key={week} fallback={<BookingSkeleton />}>
-        <BookWeekContent week={week} profile={profile} />
+      <Suspense key={`${week}:${params.date ?? ""}`} fallback={<BookingSkeleton />}>
+        <BookWeekContent
+          week={week}
+          initialDate={params.date}
+          profile={profile}
+        />
       </Suspense>
     </MemberShell>
   );
@@ -45,9 +48,11 @@ export default async function BookPage({
 
 async function BookWeekContent({
   week,
+  initialDate,
   profile,
 }: {
   week: string;
+  initialDate?: string;
   profile: Profile;
 }) {
   const { days, rooms, occupancy, settings, friday } =
@@ -71,6 +76,7 @@ async function BookWeekContent({
       occupancy={occupancy}
       settings={settings}
       weekStart={friday}
+      initialDate={initialDate}
       requesterName={profile.full_name}
       requesterPhone={profile.phone}
     />

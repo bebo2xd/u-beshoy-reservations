@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 interface DayViewProps {
   days: WeekDay[];
   activeDate: string;
-  onChangeDate: (date: string) => void;
+  onChangeDate?: (date: string) => void;
   rooms: Room[];
   hours: number[];
   occupancy: OccupancyBlock[];
@@ -18,6 +18,8 @@ interface DayViewProps {
   selectedDate?: string | null;
   selectedHours?: number[];
   onSelectSlot?: (roomId: string, date: string, hour: number) => void;
+  /** When false, hide the horizontal day strip (date is chosen elsewhere). */
+  showDayStrip?: boolean;
 }
 
 export function DayView({
@@ -31,35 +33,40 @@ export function DayView({
   selectedDate,
   selectedHours = [],
   onSelectSlot,
+  showDayStrip = true,
 }: DayViewProps) {
   const today = todayCairo();
   const activeIsPast = activeDate < today;
 
   return (
     <div className="space-y-5">
-      <div className="flex gap-2.5 overflow-x-auto pb-2 scrollbar-thin -mx-1 px-1">
-        {days.map((d) => {
-          const isActive = activeDate === d.date;
-          return (
-            <button
-              key={d.date}
-              type="button"
-              onClick={() => onChangeDate(d.date)}
-              className={cn(
-                "min-h-16 min-w-[4.75rem] shrink-0 rounded-2xl border px-3 py-2 text-center transition-colors",
-                isActive
-                  ? "border-primary bg-primary text-primary-foreground"
-                  : "border-border bg-card hover:bg-secondary"
-              )}
-            >
-              <div className="text-sm font-bold">{d.shortLabel}</div>
-              <div className="mt-0.5 text-xs font-medium opacity-80">
-                {d.date === today ? "اليوم" : `${d.date.slice(8)}/${d.date.slice(5, 7)}`}
-              </div>
-            </button>
-          );
-        })}
-      </div>
+      {showDayStrip ? (
+        <div className="flex gap-2.5 overflow-x-auto pb-2 scrollbar-thin -mx-1 px-1">
+          {days.map((d) => {
+            const isActive = activeDate === d.date;
+            return (
+              <button
+                key={d.date}
+                type="button"
+                onClick={() => onChangeDate?.(d.date)}
+                className={cn(
+                  "min-h-16 min-w-[4.75rem] shrink-0 rounded-2xl border px-3 py-2 text-center transition-colors",
+                  isActive
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-border bg-card hover:bg-secondary"
+                )}
+              >
+                <div className="text-sm font-bold">{d.shortLabel}</div>
+                <div className="mt-0.5 text-xs font-medium opacity-80">
+                  {d.date === today
+                    ? "اليوم"
+                    : `${d.date.slice(8)}/${d.date.slice(5, 7)}`}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
 
       <div className="space-y-4">
         {rooms.map((room, idx) => (
