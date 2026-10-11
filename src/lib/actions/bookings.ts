@@ -5,8 +5,10 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getProfile, requireAdmin, requireAuth, requirePermission } from "@/lib/auth/session";
 import { notifyBookingDecision, notifyNewBooking } from "@/lib/notify";
-import { formatDateAr } from "@/lib/dates";
+import { formatDateAr, isSlotPast } from "@/lib/dates";
 import { rangeLabel } from "@/lib/constants";
+import { listBookingsPage } from "@/lib/data";
+import type { BookingListStatus } from "@/lib/types";
 import { revalidatePath } from "next/cache";
 
 export async function submitBookingRequest(form: {
@@ -20,6 +22,13 @@ export async function submitBookingRequest(form: {
 }) {
   if (form.honeypot) {
     return { ok: false as const, error: "تم رفض الطلب" };
+  }
+
+  if (isSlotPast(form.date, form.startHour)) {
+    return {
+      ok: false as const,
+      error: "مش هتقدر تحجز في وقت فات — اختَر ساعة لسه جاية",
+    };
   }
 
   const auth = await requireAuth();
@@ -244,4 +253,20 @@ export async function getMyBookingsAction() {
     .eq("created_by", profile.id)
     .order("created_at", { ascending: false });
   return data ?? [];
+}
+
+/** Soft client refresh for admin recent-bookings panel (no full RSC remount). */
+export async function fetchBookingsPageAction(opts: {
+  q?: string;
+  status?: BookingListStatus;
+  roomId?: string;
+  page?: number;
+  pageSize?: number;
+}) {
+  const auth = await requireAuth();
+  if (!auth.ok) {
+    return { ok: false as const, error: auth.error ?? "غير مصرح", items: [], total: 0, page: 1, pageSize: 20 };
+  }
+  const result = await listBookingsPage(opts);
+  return { ok: true as const, ...result };
 }

@@ -10,6 +10,7 @@ import type {
   AppSettings,
   Blackout,
   Booking,
+  BookingListStatus,
   OccupancyBlock,
   RecurringSchedule,
   Room,
@@ -154,6 +155,79 @@ export async function getRecentBookings(limit = 50): Promise<Booking[]> {
     .order("created_at", { ascending: false })
     .limit(limit);
   return (data as Booking[]) ?? [];
+}
+
+const BOOKING_PAGE_SIZES = [10, 20, 50, 100] as const;
+
+export type { BookingListStatus };
+
+export function normalizeBookingPageSize(value?: number | string): number {
+  const n = Number(value);
+  return (BOOKING_PAGE_SIZES as readonly number[]).includes(n) ? n : 20;
+}
+
+/** Server-side search / filter / pagination for admin booking history. */
+export async function listBookingsPage(opts: {
+  q?: string;
+  status?: BookingListStatus;
+  roomId?: string;
+  page?: number;
+  pageSize?: number;
+}): Promise<{
+  items: Booking[];
+  total: number;
+  page: number;
+  pageSize: number;
+}> {
+  const pageSize = normalizeBookingPageSize(opts.pageSize);
+  const page = Math.max(1, Number(opts.page) || 1);
+  const status = opts.status ?? "all";
+  const roomId = opts.roomId?.trim() || "";
+  const q = (opts.q ?? "")
+    .replace(/[%_,."'\\]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 80);
+
+  const supabase = await createClient();
+  let query = supabase
+    .from("bookings")
+    .select("*, rooms(*)", { count: "exact" })
+    .order("created_at", { ascending: false });
+
+  if (status !== "all") {
+    query = query.eq("status", status);
+  }
+  if (roomId) {
+    query = query.eq("room_id", roomId);
+  }
+  if (q) {
+    const pattern = `"%${q}%"`;
+    query = query.or(
+      [
+        `service_name.ilike.${pattern}`,
+        `requester_name.ilike.${pattern}`,
+        `requester_phone.ilike.${pattern}`,
+        `tracking_code.ilike.${pattern}`,
+      ].join(",")
+    );
+  }
+
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+  const { data, count, error } = await query.range(from, to);
+
+  if (error) {
+    console.error("listBookingsPage", error);
+    return { items: [], total: 0, page, pageSize };
+  }
+
+  return {
+    items: (data as Booking[]) ?? [],
+    total: count ?? 0,
+    page,
+    pageSize,
+  };
 }
 
 export async function getSchedulesWithRooms() {

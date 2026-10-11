@@ -35,7 +35,7 @@ export function SlotCell({
       onClick={onClick}
       title={
         past && !busy
-          ? "تاريخ ماضي — غير متاح للحجز"
+          ? "وقت فات — غير متاح للحجز"
           : busy
             ? block.title
             : `متاح — الساعة ${hour}`

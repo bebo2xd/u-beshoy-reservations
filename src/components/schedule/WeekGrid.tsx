@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { hourLabel } from "@/lib/constants";
 import { getBlocksForSlot } from "@/lib/availability";
-import { todayCairo } from "@/lib/dates";
+import { isSlotPast, todayCairo } from "@/lib/dates";
 import type { OccupancyBlock, Room, WeekDay } from "@/lib/types";
 import { SlotCell } from "./SlotCell";
 import { cn } from "@/lib/utils";
@@ -184,8 +184,9 @@ export function WeekGrid({
                           day.date,
                           h
                         );
+                        const past = isSlotPast(day.date, h);
                         const selected =
-                          !isPast &&
+                          !past &&
                           selectedRoomId === room.id &&
                           selectedDate === day.date &&
                           selectedHours.some((x) => Math.abs(x - h) < 1e-9);
@@ -198,10 +199,10 @@ export function WeekGrid({
                               hour={h}
                               blocks={blocks}
                               selected={selected}
-                              past={isPast}
+                              past={past}
                               compact
                               onClick={() =>
-                                !isPast &&
+                                !past &&
                                 onSelectSlot?.(room.id, day.date, h)
                               }
                             />

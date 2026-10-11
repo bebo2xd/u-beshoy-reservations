@@ -1,23 +1,52 @@
 import { Suspense } from "react";
 import { Hash, Phone, StickyNote, UserRound } from "lucide-react";
-import { getPendingBookings, getRecentBookings } from "@/lib/data";
+import {
+  getActiveRooms,
+  getPendingBookings,
+  listBookingsPage,
+  normalizeBookingPageSize,
+} from "@/lib/data";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { BookingActions } from "@/components/admin/BookingActions";
 import { BookingDeepLinkTarget } from "@/components/admin/BookingDeepLink";
+import { RecentBookingsPanel } from "@/components/admin/RecentBookingsPanel";
 import { ScreenHeader } from "@/components/ui/screen-header";
 import { CardListSkeleton, TableSkeleton } from "@/components/ui/skeleton";
 import { formatDateAr } from "@/lib/dates";
 import { rangeLabel } from "@/lib/constants";
+import type { BookingListStatus, BookingStatus } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
+
+const STATUSES = new Set<BookingStatus>([
+  "pending",
+  "approved",
+  "rejected",
+  "cancelled",
+]);
+
+function parseStatus(value?: string): BookingListStatus {
+  if (value && STATUSES.has(value as BookingStatus)) {
+    return value as BookingStatus;
+  }
+  return "all";
+}
 
 export default async function AdminDashboardPage({
   searchParams,
 }: {
-  searchParams: Promise<{ booking?: string }>;
+  searchParams: Promise<{
+    booking?: string;
+    q?: string;
+    status?: string;
+    room?: string;
+    page?: string;
+    per?: string;
+  }>;
 }) {
-  const { booking: focusBookingId } = await searchParams;
+  const params = await searchParams;
+  const focusBookingId = params.booking;
 
   return (
     <div className="space-y-6">
@@ -31,7 +60,13 @@ export default async function AdminDashboardPage({
       </Suspense>
 
       <Suspense fallback={<TableSkeleton rows={6} />}>
-        <RecentSection />
+        <RecentSection
+          q={params.q ?? ""}
+          status={parseStatus(params.status)}
+          roomId={params.room ?? ""}
+          page={Math.max(1, Number(params.page) || 1)}
+          pageSize={normalizeBookingPageSize(params.per)}
+        />
       </Suspense>
     </div>
   );
@@ -83,10 +118,15 @@ async function PendingSection({ focusBookingId }: { focusBookingId?: string }) {
                         <UserRound className="h-4 w-4 shrink-0" aria-hidden />
                         {b.requester_name}
                       </span>
-                      <span className="inline-flex items-center gap-2" dir="ltr">
+                      <a
+                        href={`tel:${b.requester_phone.replace(/\D/g, "")}`}
+                        className="inline-flex items-center gap-2 rounded-md transition-colors hover:text-primary hover:underline"
+                        dir="ltr"
+                        aria-label={`اتصال بـ ${b.requester_phone}`}
+                      >
                         <Phone className="h-4 w-4 shrink-0" aria-hidden />
                         {b.requester_phone}
-                      </span>
+                      </a>
                       <span
                         className="inline-flex items-center gap-2 font-mono"
                         dir="ltr"
@@ -116,43 +156,38 @@ async function PendingSection({ focusBookingId }: { focusBookingId?: string }) {
   );
 }
 
-async function RecentSection() {
-  const recent = await getRecentBookings(20);
+async function RecentSection({
+  q,
+  status,
+  roomId,
+  page,
+  pageSize,
+}: {
+  q: string;
+  status: BookingListStatus;
+  roomId: string;
+  page: number;
+  pageSize: number;
+}) {
+  const [result, rooms] = await Promise.all([
+    listBookingsPage({ q, status, roomId, page, pageSize }),
+    getActiveRooms(),
+  ]);
 
   return (
-    <section className="space-y-3">
-      <h2 className="text-lg font-semibold">آخر الطلبات</h2>
-      <Card>
-        <CardContent className="divide-y divide-border p-0">
-          {recent.map((b) => (
-            <div
-              key={b.id}
-              className="flex flex-wrap items-center justify-between gap-2 px-5 py-3 text-sm"
-            >
-              <div className="min-w-0 flex-1">
-                <p className="font-medium">{b.service_name}</p>
-                <p className="text-muted-foreground">
-                  {b.rooms?.name} · {formatDateAr(b.booking_date)} ·{" "}
-                  {rangeLabel(b.start_hour, b.end_hour)}
-                </p>
-              </div>
-              <StatusBadge status={b.status} />
-            </div>
-          ))}
-          {recent.length === 0 && (
-            <p className="px-5 py-8 text-center text-muted-foreground">
-              لا توجد طلبات
-            </p>
-          )}
-        </CardContent>
-      </Card>
-    </section>
+    <RecentBookingsPanel
+      items={result.items}
+      total={result.total}
+      page={result.page}
+      pageSize={result.pageSize}
+      q={q}
+      status={status}
+      roomId={roomId}
+      rooms={rooms.map((r) => ({
+        id: r.id,
+        name: r.name,
+        color: r.color,
+      }))}
+    />
   );
-}
-
-function StatusBadge({ status }: { status: string }) {
-  if (status === "pending") return <Badge variant="pending">معلق</Badge>;
-  if (status === "approved") return <Badge variant="success">مقبول</Badge>;
-  if (status === "rejected") return <Badge variant="danger">مرفوض</Badge>;
-  return <Badge variant="muted">ملغي</Badge>;
 }

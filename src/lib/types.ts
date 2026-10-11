@@ -3,6 +3,9 @@ import type { UiFontId } from "@/lib/ui-fonts";
 
 export type BookingStatus = "pending" | "approved" | "rejected" | "cancelled";
 
+/** Admin booking list filter — includes “all statuses”. */
+export type BookingListStatus = BookingStatus | "all";
+
 export type AppRole = "admin" | "servant";
 
 export type OccupancyKind = "recurring" | "booking" | "blackout" | "pending";

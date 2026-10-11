@@ -13,6 +13,7 @@ import {
   addCalendarDays,
   formatDateAr,
   getWeekStartFriday,
+  isSlotPast,
   todayCairo,
 } from "@/lib/dates";
 import type { AppSettings, OccupancyBlock, Room, WeekDay } from "@/lib/types";
@@ -83,8 +84,12 @@ export function BookingBoard({
   const selectedRoom = rooms.find((r) => r.id === selectedRoomId);
 
   function handleSelectSlot(roomId: string, date: string, hour: number) {
-    if (date < todayCairo()) {
-      toast.message("مش هتقدر تحجز في تاريخ فات");
+    if (isSlotPast(date, hour)) {
+      toast.message(
+        date < todayCairo()
+          ? "مش هتقدر تحجز في تاريخ فات"
+          : "الساعة دي فاتت — اختَر وقت لسه جاي"
+      );
       return;
     }
     if (selectedRoomId !== roomId || selectedDate !== date) {

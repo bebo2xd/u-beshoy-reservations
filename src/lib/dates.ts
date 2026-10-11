@@ -36,6 +36,31 @@ export function todayCairo(): string {
   return formatDateInCairo(new Date());
 }
 
+/** Current Cairo wall-clock as a fractional hour (e.g. 14.5 = 2:30 PM). */
+export function currentHourCairo(now = new Date()): number {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: CAIRO_TZ,
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(now);
+  const hour = Number(parts.find((p) => p.type === "hour")?.value ?? 0);
+  const minute = Number(parts.find((p) => p.type === "minute")?.value ?? 0);
+  return hour + minute / 60;
+}
+
+/** True when the slot start is already in the past (Cairo date + clock). */
+export function isSlotPast(
+  dateStr: string,
+  startHour: number,
+  now = new Date()
+): boolean {
+  const today = formatDateInCairo(now);
+  if (dateStr < today) return true;
+  if (dateStr > today) return false;
+  return startHour <= currentHourCairo(now);
+}
+
 /** Format an instant as YYYY-MM-DD in Cairo */
 export function formatDateInCairo(date: Date): string {
   return new Intl.DateTimeFormat("en-CA", {

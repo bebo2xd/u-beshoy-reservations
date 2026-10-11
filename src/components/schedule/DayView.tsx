@@ -2,7 +2,7 @@
 
 import { hourLabel } from "@/lib/constants";
 import { getBlocksForSlot } from "@/lib/availability";
-import { todayCairo } from "@/lib/dates";
+import { isSlotPast, todayCairo } from "@/lib/dates";
 import type { OccupancyBlock, Room, WeekDay } from "@/lib/types";
 import { SlotCell } from "./SlotCell";
 import { cn } from "@/lib/utils";
@@ -36,7 +36,6 @@ export function DayView({
   showDayStrip = true,
 }: DayViewProps) {
   const today = todayCairo();
-  const activeIsPast = activeDate < today;
 
   return (
     <div className="space-y-5">
@@ -97,8 +96,9 @@ export function DayView({
                   activeDate,
                   h
                 );
+                const past = isSlotPast(activeDate, h);
                 const selected =
-                  !activeIsPast &&
+                  !past &&
                   selectedRoomId === room.id &&
                   selectedDate === activeDate &&
                   selectedHours.some((x) => Math.abs(x - h) < 1e-9);
@@ -111,11 +111,10 @@ export function DayView({
                       hour={h}
                       blocks={blocks}
                       selected={selected}
-                      past={activeIsPast}
+                      past={past}
                       compact
                       onClick={() =>
-                        !activeIsPast &&
-                        onSelectSlot?.(room.id, activeDate, h)
+                        !past && onSelectSlot?.(room.id, activeDate, h)
                       }
                     />
                   </div>

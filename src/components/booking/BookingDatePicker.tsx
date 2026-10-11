@@ -11,10 +11,11 @@ import {
   startOfMonth,
 } from "date-fns";
 import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
-import { DAY_SHORT_AR, WEEK_ORDER } from "@/lib/constants";
+import { DAY_NAMES_AR, DAY_SHORT_AR, WEEK_ORDER } from "@/lib/constants";
 import {
   addCalendarDays,
   cairoNoon,
+  dayOfWeekCairo,
   formatDateAr,
   todayCairo,
 } from "@/lib/dates";
@@ -36,6 +37,15 @@ const MONTH_NAMES_AR = [
   "نوفمبر",
   "ديسمبر",
 ];
+
+function monthNameFromDate(dateStr: string): string {
+  const month = Number(dateStr.slice(5, 7));
+  return MONTH_NAMES_AR[month - 1] ?? "";
+}
+
+function dayNumberFromDate(dateStr: string): number {
+  return Number(dateStr.slice(8, 10));
+}
 
 interface BookingDatePickerProps {
   value: string;
@@ -93,12 +103,12 @@ export function BookingDatePicker({
         type="button"
         variant="outline"
         size="icon"
-        className="h-14 w-12 shrink-0 rounded-2xl"
+        className="h-12 w-10 shrink-0 rounded-2xl"
         onClick={() => shiftDay(-1)}
         disabled={disabled || value <= minDate}
         aria-label="اليوم السابق"
       >
-        <ChevronRight className="h-5 w-5" />
+        <ChevronRight className="h-4 w-4" />
       </Button>
 
       <Popover
@@ -114,7 +124,7 @@ export function BookingDatePicker({
             disabled={disabled}
             aria-label="اختيار التاريخ"
             className={cn(
-              "group flex h-14 min-w-0 flex-1 items-center gap-3 rounded-2xl px-3.5 text-right sm:min-w-[17.5rem]",
+              "group flex h-12 min-w-0 flex-1 items-center gap-2 rounded-2xl px-2.5 text-right sm:min-w-[15rem] sm:gap-2.5 sm:px-3",
               "border border-border bg-card shadow-sm",
               "transition-colors duration-200",
               "hover:border-primary/35 hover:bg-sand-2",
@@ -123,24 +133,33 @@ export function BookingDatePicker({
               "active:scale-[0.995]"
             )}
           >
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-              <CalendarDays className="h-5 w-5" />
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary sm:h-9 sm:w-9">
+              <CalendarDays className="h-4 w-4" />
             </span>
             <span className="min-w-0 flex-1 leading-tight">
-              <span className="block text-[11px] font-semibold tracking-wide text-muted-foreground">
+              <span className="block text-[10px] font-semibold tracking-wide text-muted-foreground sm:text-[11px]">
                 التاريخ
               </span>
-              <span className="block truncate text-base font-bold text-foreground">
+              <span className="block truncate text-sm font-bold text-foreground sm:text-[15px]">
                 {isToday ? (
                   <>
                     اليوم
-                    <span className="mx-1.5 font-medium text-muted-foreground">·</span>
+                    <span className="mx-1 font-medium text-muted-foreground">·</span>
                     <span className="font-semibold text-muted-foreground">
-                      {formatDateAr(value).replace(/^\S+\s/, "")}
+                      {dayNumberFromDate(value)}{" "}
+                      <span className="text-[11px] font-medium sm:text-xs">
+                        {monthNameFromDate(value)}
+                      </span>
                     </span>
                   </>
                 ) : (
-                  formatDateAr(value)
+                  <>
+                    {DAY_NAMES_AR[dayOfWeekCairo(value)]}{" "}
+                    {dayNumberFromDate(value)}{" "}
+                    <span className="text-[11px] font-semibold text-muted-foreground sm:text-xs">
+                      {monthNameFromDate(value)}
+                    </span>
+                  </>
                 )}
               </span>
             </span>
@@ -250,12 +269,12 @@ export function BookingDatePicker({
         type="button"
         variant="outline"
         size="icon"
-        className="h-14 w-12 shrink-0 rounded-2xl"
+        className="h-12 w-10 shrink-0 rounded-2xl"
         onClick={() => shiftDay(1)}
         disabled={disabled || value >= maxDate}
         aria-label="اليوم التالي"
       >
-        <ChevronLeft className="h-5 w-5" />
+        <ChevronLeft className="h-4 w-4" />
       </Button>
     </div>
   );
