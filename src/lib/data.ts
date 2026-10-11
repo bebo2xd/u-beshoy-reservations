@@ -11,6 +11,7 @@ import type {
   Blackout,
   Booking,
   BookingListStatus,
+  BookingStatus,
   OccupancyBlock,
   RecurringSchedule,
   Room,
