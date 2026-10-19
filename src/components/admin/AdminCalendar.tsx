@@ -21,9 +21,10 @@ import {
 } from "@/components/ui/select";
 import { hoursList, selectionFromHours } from "@/lib/availability";
 import { adminCreateBooking, addException } from "@/lib/actions/admin";
+import { cancelBookingsAction } from "@/lib/actions/bookings";
 import type { AppSettings, OccupancyBlock, Room, WeekDay } from "@/lib/types";
-import { getWeekStartFriday, addCalendarDays } from "@/lib/dates";
-import { slotStepHours } from "@/lib/constants";
+import { formatDateAr, getWeekStartFriday, addCalendarDays } from "@/lib/dates";
+import { rangeLabel, slotStepHours } from "@/lib/constants";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { ChevronLeft, ChevronRight } from "lucide-react";
@@ -46,6 +47,7 @@ export function AdminCalendar({ days, rooms, occupancy, settings, weekStart }: P
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedHours, setSelectedHours] = useState<number[]>([]);
   const [open, setOpen] = useState(false);
+  const [inspect, setInspect] = useState<OccupancyBlock | null>(null);
   const [pending, startTransition] = useTransition();
   const router = useRouter();
 
@@ -97,6 +99,7 @@ export function AdminCalendar({ days, rooms, occupancy, settings, weekStart }: P
         selectedDate={selectedDate}
         selectedHours={selectedHours}
         onSelectSlot={handleSelectSlot}
+        onOpenBooking={setInspect}
       />
 
       {selection && selectedRoomId && selectedDate && (
@@ -116,6 +119,53 @@ export function AdminCalendar({ days, rooms, occupancy, settings, weekStart }: P
       )}
 
       <ExceptionQuickAdd rooms={rooms} occupancy={occupancy} />
+
+      <Dialog open={Boolean(inspect)} onOpenChange={(next) => !next && setInspect(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {inspect?.kind === "pending" ? "طلب قيد المراجعة" : "حجز مؤكد"}
+            </DialogTitle>
+          </DialogHeader>
+          {inspect ? (
+            <div className="space-y-3 text-sm">
+              <p className="text-base font-bold">{inspect.title}</p>
+              <p className="text-muted-foreground">
+                {rooms.find((r) => r.id === inspect.room_id)?.name} ·{" "}
+                {formatDateAr(inspect.date)} ·{" "}
+                {rangeLabel(inspect.start_hour, inspect.end_hour)}
+              </p>
+              <p className="text-muted-foreground">
+                إلغاء الحجز بيفضّي المكان حتى لو الخدمة كانت متقبّلة.
+              </p>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => setInspect(null)}>
+                  رجوع
+                </Button>
+                <Button
+                  variant="destructive"
+                  disabled={pending}
+                  onClick={() => {
+                    if (!inspect.booking_id) return;
+                    startTransition(async () => {
+                      const res = await cancelBookingsAction([inspect.booking_id!]);
+                      if (!res.ok) {
+                        toast.error(res.error);
+                        return;
+                      }
+                      toast.success("تم إلغاء الحجز والمكان بقى فاضي");
+                      setInspect(null);
+                      router.refresh();
+                    });
+                  }}
+                >
+                  إلغاء الحجز
+                </Button>
+              </div>
+            </div>
+          ) : null}
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>

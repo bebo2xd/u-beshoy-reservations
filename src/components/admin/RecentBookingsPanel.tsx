@@ -9,9 +9,11 @@ import {
   useTransition,
 } from "react";
 import {
+  Ban,
   Check,
   Hash,
   Phone,
+  RefreshCw,
   Search,
   Trash2,
   UserRound,
@@ -40,6 +42,7 @@ import {
 } from "@/components/ui/select";
 import { PaginationBar } from "@/components/admin/PaginationBar";
 import {
+  cancelBookingsAction,
   decideBookingsAction,
   deleteBookingsAction,
   fetchBookingIdsAction,
@@ -141,7 +144,7 @@ export function RecentBookingsPanel({
     () => Object.fromEntries(initialItems.map((b) => [b.id, b.status]))
   );
   const [confirmAction, setConfirmAction] = useState<
-    null | "delete" | "approved" | "rejected"
+    null | "delete" | "approved" | "rejected" | "cancel"
   >(null);
   const requestId = useRef(0);
   const skipSearchFetch = useRef(true);
@@ -159,6 +162,15 @@ export function RecentBookingsPanel({
     let count = 0;
     for (const id of selected) {
       if (statusById[id] === "pending") count += 1;
+    }
+    return count;
+  }, [selected, statusById]);
+
+  const cancellableSelectedCount = useMemo(() => {
+    let count = 0;
+    for (const id of selected) {
+      const status = statusById[id];
+      if (status === "pending" || status === "approved") count += 1;
     }
     return count;
   }, [selected, statusById]);
@@ -322,6 +334,25 @@ export function RecentBookingsPanel({
     const ids = Array.from(selected);
     if (!confirmAction || ids.length === 0) return;
 
+    if (confirmAction === "cancel") {
+      startTransition(async () => {
+        const res = await cancelBookingsAction(ids);
+        if (!res.ok) {
+          toast.error(res.error);
+          return;
+        }
+        toast.success(
+          res.cancelled === 1
+            ? "تم إلغاء حجز واحد والمكان بقى فاضي"
+            : `تم إلغاء ${res.cancelled} حجوزات`
+        );
+        setConfirmAction(null);
+        clearSelection();
+        reloadCurrentPage();
+      });
+      return;
+    }
+
     if (confirmAction === "delete") {
       startTransition(async () => {
         const res = await deleteBookingsAction(ids);
@@ -481,7 +512,7 @@ export function RecentBookingsPanel({
           </div>
 
           <div
-            className="flex gap-1.5 overflow-x-auto pb-0.5 scrollbar-thin"
+            className="flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-thin"
             role="tablist"
             aria-label="فلتر الحالة"
           >
@@ -523,6 +554,20 @@ export function RecentBookingsPanel({
                 مسح الكل
               </button>
             ) : null}
+            <button
+              type="button"
+              onClick={reloadCurrentPage}
+              disabled={pending}
+              aria-label="تحديث البيانات"
+              title="تحديث"
+              className="ms-auto inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl bg-card px-3 text-sm font-semibold text-sand-11 ring-1 ring-border transition hover:bg-sand-2 hover:text-foreground disabled:opacity-60"
+            >
+              <RefreshCw
+                className={cn("h-4 w-4", pending && "animate-spin")}
+                aria-hidden
+              />
+              تحديث
+            </button>
           </div>
         </div>
 
@@ -622,7 +667,22 @@ export function RecentBookingsPanel({
                       </span>
                     </div>
                   </div>
-                  <StatusBadge status={b.status} />
+                  <div className="flex shrink-0 flex-col items-end gap-2">
+                    <StatusBadge status={b.status} />
+                    {b.status === "pending" || b.status === "approved" ? (
+                      <button
+                        type="button"
+                        disabled={pending}
+                        onClick={() => {
+                          setSelected(new Set([b.id]));
+                          setConfirmAction("cancel");
+                        }}
+                        className="text-xs font-semibold text-tomato-9 underline-offset-2 hover:underline disabled:opacity-50"
+                      >
+                        إلغاء الحجز
+                      </button>
+                    ) : null}
+                  </div>
                 </div>
               </div>
             );
@@ -751,6 +811,26 @@ export function RecentBookingsPanel({
             <Button
               variant="outline"
               size="sm"
+              disabled={pending || cancellableSelectedCount === 0}
+              title={
+                cancellableSelectedCount === 0
+                  ? "مفيش حجوزات معلقة أو مقبولة ضمن التحديد"
+                  : `إلغاء ${cancellableSelectedCount} حجز`
+              }
+              onClick={() => setConfirmAction("cancel")}
+              className="gap-1.5"
+            >
+              <Ban className="h-4 w-4" aria-hidden />
+              إلغاء
+              {cancellableSelectedCount > 0 ? (
+                <span className="tabular-nums opacity-90">
+                  ({cancellableSelectedCount})
+                </span>
+              ) : null}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
               disabled={pending}
               onClick={() => setConfirmAction("delete")}
               className="gap-1.5 border-tomato-9/40 text-tomato-9 hover:bg-tomato-3"
@@ -771,14 +851,24 @@ export function RecentBookingsPanel({
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>
-              {confirmAction === "delete"
+              {confirmAction === "cancel"
+                ? "تأكيد إلغاء الحجز"
+                : confirmAction === "delete"
                 ? "تأكيد الحذف"
                 : confirmAction === "approved"
                   ? "تأكيد القبول"
                   : "تأكيد الرفض"}
             </DialogTitle>
             <DialogDescription>
-              {confirmAction === "delete" ? (
+              {confirmAction === "cancel" ? (
+                <>
+                  هيتلغى{" "}
+                  <span className="font-bold text-foreground tabular-nums">
+                    {cancellableSelectedCount}
+                  </span>{" "}
+                  حجز (معلق أو مقبول) والمكان هيفضى. المرفوض والملغي بيتجاهلوا.
+                </>
+              ) : confirmAction === "delete" ? (
                 <>
                   هيتشال{" "}
                   <span className="font-bold text-foreground tabular-nums">
@@ -824,7 +914,12 @@ export function RecentBookingsPanel({
               onClick={runConfirmedAction}
               className="gap-2"
             >
-              {confirmAction === "delete" ? (
+              {confirmAction === "cancel" ? (
+                <>
+                  <Ban className="h-4 w-4" aria-hidden />
+                  إلغاء الحجز
+                </>
+              ) : confirmAction === "delete" ? (
                 <>
                   <Trash2 className="h-4 w-4" aria-hidden />
                   احذف نهائيًا

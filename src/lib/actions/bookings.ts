@@ -431,6 +431,115 @@ export async function decideBookingsAction(
   return { ok: true as const, decided, skipped, conflicts };
 }
 
+/** Cancel pending or approved bookings so the room is free again. */
+export async function cancelBookingsAction(ids: string[]) {
+  const auth = await requirePermission("decide_bookings");
+  if (!auth.ok) {
+    return { ok: false as const, error: auth.error ?? "غير مصرح", cancelled: 0, skipped: 0 };
+  }
+
+  const unique = Array.from(
+    new Set(ids.map((id) => id.trim()).filter(Boolean))
+  ).slice(0, 5000);
+
+  if (unique.length === 0) {
+    return { ok: false as const, error: "لم يتم اختيار أي طلب", cancelled: 0, skipped: 0 };
+  }
+
+  let admin = auth.supabase!;
+  try {
+    admin = createAdminClient();
+  } catch {
+    /* use session client */
+  }
+
+  type Row = {
+    id: string;
+    status: string;
+    requester_phone: string;
+    service_name: string;
+    booking_date: string;
+    start_hour: number;
+    end_hour: number;
+    tracking_code: string;
+    rooms: { name?: string } | null;
+  };
+
+  const rows: Row[] = [];
+  const chunkSize = 100;
+  for (let i = 0; i < unique.length; i += chunkSize) {
+    const chunk = unique.slice(i, i + chunkSize);
+    const { data, error } = await admin
+      .from("bookings")
+      .select("id, status, requester_phone, service_name, booking_date, start_hour, end_hour, tracking_code, rooms(name)")
+      .in("id", chunk);
+    if (error) {
+      console.error("cancelBookingsAction fetch", error);
+      return { ok: false as const, error: "تعذر قراءة الطلبات", cancelled: 0, skipped: 0 };
+    }
+    rows.push(...((data as Row[]) ?? []));
+  }
+
+  const cancellable = rows.filter(
+    (row) => row.status === "pending" || row.status === "approved"
+  );
+  const skipped = unique.length - cancellable.length;
+  if (cancellable.length === 0) {
+    return {
+      ok: false as const,
+      error: "مفيش حجوزات قابلة للإلغاء ضمن التحديد",
+      cancelled: 0,
+      skipped,
+    };
+  }
+
+  const idsToCancel = cancellable.map((row) => row.id);
+  let cancelled = 0;
+  for (let i = 0; i < idsToCancel.length; i += chunkSize) {
+    const chunk = idsToCancel.slice(i, i + chunkSize);
+    const { data, error } = await admin
+      .from("bookings")
+      .update({ status: "cancelled", updated_at: new Date().toISOString() })
+      .in("id", chunk)
+      .in("status", ["pending", "approved"])
+      .select("id");
+    if (error) {
+      console.error("cancelBookingsAction update", error);
+      return {
+        ok: false as const,
+        error: cancelled > 0 ? `اتلغى ${cancelled} وبعدين حصل خطأ` : "تعذر إلغاء الحجوزات",
+        cancelled,
+        skipped,
+      };
+    }
+    cancelled += data?.length ?? 0;
+  }
+
+  const { notifyBookingCancelled } = await import("@/lib/notify");
+  after(async () => {
+    for (const row of cancellable) {
+      try {
+        await notifyBookingCancelled({
+          requester_phone: row.requester_phone,
+          service_name: row.service_name,
+          room_name: row.rooms?.name ?? "مكان",
+          date_label: formatDateAr(row.booking_date),
+          time_label: rangeLabel(row.start_hour, row.end_hour),
+          tracking_code: row.tracking_code,
+        });
+      } catch (e) {
+        console.error("Cancel notify failed", e);
+      }
+    }
+  });
+
+  revalidatePath("/admin");
+  revalidatePath("/admin/calendar");
+  revalidatePath("/book");
+  revalidatePath("/my-bookings");
+  return { ok: true as const, cancelled, skipped };
+}
+
 /** Hard-delete one or more bookings from the admin list. */
 export async function deleteBookingsAction(ids: string[]) {
   const auth = await requirePermission("decide_bookings");

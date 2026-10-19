@@ -26,7 +26,7 @@ export function CancelButton({
       className={cn("w-full sm:w-auto", className)}
       disabled={pending}
       onClick={() => {
-        if (!confirm("هل تريد إلغاء طلب الحجز؟")) return;
+        if (!confirm("إلغاء الحجز؟ المكان هيفضى حتى لو الطلب كان مقبول.")) return;
         startTransition(async () => {
           const res = await cancelBooking(code);
           if (!res.ok) {
@@ -38,7 +38,7 @@ export function CancelButton({
         });
       }}
     >
-      {pending ? "جاري الإلغاء..." : "إلغاء الطلب"}
+      {pending ? "جاري الإلغاء..." : "إلغاء الحجز"}
     </Button>
   );
 }

@@ -18,6 +18,7 @@ interface WeekGridProps {
   selectedDate?: string | null;
   selectedHours?: number[];
   onSelectSlot?: (roomId: string, date: string, hour: number) => void;
+  onOpenBooking?: (block: OccupancyBlock) => void;
   activeDay?: string;
 }
 
@@ -30,6 +31,7 @@ export function WeekGrid({
   selectedDate,
   selectedHours = [],
   onSelectSlot,
+  onOpenBooking,
   activeDay,
 }: WeekGridProps) {
   const visibleDays = activeDay ? days.filter((d) => d.date === activeDay) : days;
@@ -201,6 +203,7 @@ export function WeekGrid({
                               selected={selected}
                               past={past}
                               compact
+                              onOpenBooking={onOpenBooking}
                               onClick={() =>
                                 !past &&
                                 onSelectSlot?.(room.id, day.date, h)

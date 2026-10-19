@@ -9,6 +9,8 @@ interface SlotCellProps {
   blocks: OccupancyBlock[];
   selected?: boolean;
   onClick?: () => void;
+  /** فتح حجز موجود (مقبول أو معلق) بدل تعطيل الخلية */
+  onOpenBooking?: (block: OccupancyBlock) => void;
   compact?: boolean;
   /** تاريخ ماضي — يظهر المحتوى، والفاضي رصاصي وغير قابل للحجز */
   past?: boolean;
@@ -19,6 +21,7 @@ export function SlotCell({
   blocks,
   selected,
   onClick,
+  onOpenBooking,
   compact,
   past,
 }: SlotCellProps) {
@@ -26,13 +29,22 @@ export function SlotCell({
   const busy = Boolean(block);
   const isBlackout = block?.kind === "blackout";
   const isPending = block?.kind === "pending";
-  const locked = busy || past;
+  const canOpen =
+    Boolean(onOpenBooking && block?.booking_id) &&
+    (block?.kind === "booking" || block?.kind === "pending");
+  const locked = (busy && !canOpen) || (past && !canOpen);
 
   return (
     <button
       type="button"
       disabled={locked}
-      onClick={onClick}
+      onClick={() => {
+        if (canOpen && block) {
+          onOpenBooking?.(block);
+          return;
+        }
+        onClick?.();
+      }}
       title={
         past && !busy
           ? "وقت فات — غير متاح للحجز"
@@ -64,7 +76,8 @@ export function SlotCell({
         busy &&
           !isBlackout &&
           !isPending &&
-          "cursor-not-allowed text-white border-transparent shadow-sm"
+          "cursor-not-allowed text-white border-transparent shadow-sm",
+        canOpen && "cursor-pointer ring-offset-2 hover:ring-2 hover:ring-primary"
       )}
       style={
         busy && !isBlackout && !isPending
